@@ -32,7 +32,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="relative">
           <div className="absolute inset-0 transition-all duration-1000">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 blur-3xl rounded-full -z-10 animate-gradient-shift" />
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-red-500/20 to-blue-500/20 blur-3xl rounded-full -z-10 animate-gradient-shift" />
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-1" />
             <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 via-orange-500/20 to-yellow-500/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-2" />
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 via-blue-500/20 to-purple-500/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-3" />
