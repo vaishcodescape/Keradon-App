@@ -1,0 +1,32 @@
+{
+  "name": "keradon-app",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.ts",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "electron:build": "tsc -p electron-tsconfig.json",
+    "electron": "npm run electron:build && electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron\""
+  },
+  "dependencies": {
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "wait-on": "^7.2.0"
+  }
+}

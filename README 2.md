@@ -1,3 +1,3 @@
 # Keradon-App
 Keradon is a Online application designed for users to extract web data easily of literally anything they want.
-Made with Tauri and a Fast-API Python Backend.
+Made with Electron.js and Fast-API using Python.
