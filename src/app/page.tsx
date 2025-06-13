@@ -9,7 +9,7 @@ export default function Home() {
       <div className="bg-black bg-opacity-80 rounded-3xl shadow-2xl p-12 max-w-3xl mx-auto text-center animate-fade-in">
         <h1 className="text-5xl md:text-6xl font-bold mb-6 text-white animate-slide-in">Welcome to <br />Keradon</h1>
         <p className="text-lg md:text-xl text-gray-300 mb-8">Navigate the vast ocean of data with our AI-powered search and visualization tool.</p>
-        <button className="mt-4 px-8 py-3 bg-white text-black font-semibold rounded-full shadow hover:bg-gray-200 transition animate-bounce">Get Started</button>
+        <button className="mt-4 px-8 py-3 bg-white text-black font-semibold rounded-full shadow hover:bg-gray-200 transition animate-fade-in">Get Started</button>
       </div>
     </div>
   );
