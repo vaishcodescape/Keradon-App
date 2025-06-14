@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  // Required for Electron
   images: {
     unoptimized: true,
   },
 }
 
-module.exports = nextConfig 
+export default nextConfig 
