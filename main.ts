@@ -1,7 +1,6 @@
 /* main.ts */
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import * as url from 'url';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -19,21 +18,31 @@ function createWindow(): void {
 
   const startURL = isDev
     ? 'http://localhost:3000'
-    : url.format({
-        pathname: path.join(__dirname, 'out/index.html'),
-        protocol: 'file:',
-        slashes: true,
-      });
+    : `file://${path.join(__dirname, '../out/index.html')}`;
 
   win.loadURL(startURL);
+
+  // Open DevTools in development mode
+  if (isDev) {
+    win.webContents.openDevTools();
+  }
+}
+
+// Handle creating/removing shortcuts on Windows when installing/uninstalling
+if (require('electron-squirrel-startup')) {
+  app.quit();
 }
 
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
