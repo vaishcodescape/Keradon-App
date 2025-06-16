@@ -50,15 +50,25 @@ function createWindow() {
     const isDev = process.env.NODE_ENV === 'development';
     const startURL = isDev
         ? 'http://localhost:3000'
-        : `file://${path.join(__dirname, 'out/index.html')}`;
+        : `file://${path.join(__dirname, '../out/index.html')}`;
     win.loadURL(startURL);
+    // Open DevTools in development mode
+    if (isDev) {
+        win.webContents.openDevTools();
+    }
+}
+// Handle creating/removing shortcuts on Windows when installing/uninstalling
+if (require('electron-squirrel-startup')) {
+    electron_1.app.quit();
 }
 electron_1.app.whenReady().then(createWindow);
 electron_1.app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin')
+    if (process.platform !== 'darwin') {
         electron_1.app.quit();
+    }
 });
 electron_1.app.on('activate', () => {
-    if (electron_1.BrowserWindow.getAllWindows().length === 0)
+    if (electron_1.BrowserWindow.getAllWindows().length === 0) {
         createWindow();
+    }
 });
