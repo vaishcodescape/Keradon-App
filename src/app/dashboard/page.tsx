@@ -57,12 +57,19 @@ export default function Dashboard() {
             <Button
               key={tab}
               onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'projects') {
+                  router.push('/projects');
+                }
+                if (tab === 'tools') {
+                  router.push('/tools');
+                }
                 if (tab === 'settings') {
                   router.push('/settings');
-                } else {
-                  setActiveTab(tab);
                 }
-
+                if (tab === 'analytics') {
+                  router.push('/analytics');
+                }
               }}
               variant="ghost"
               className={`w-full justify-start px-4 py-2 transition-all duration-200 text-white hover:bg-white/20 hover:text-white ${
