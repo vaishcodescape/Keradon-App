@@ -32,11 +32,11 @@ export default function Home() {
         {/* Hero Section */}
         <div className="relative">
           <div className="absolute inset-0 transition-all duration-2000">
-            <div className={`absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 via-purple-400/20 to-pink-400/20 blur-3xl rounded-full -z-10 animate-gradient-shift transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
-            <div className={`absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 via-blue-400/20 to-purple-400/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-1 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
-            <div className={`absolute inset-0 bg-gradient-to-r from-pink-400/20 via-orange-400/20 via-pink-400/20 to-orange-400/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-2 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
-            <div className={`absolute inset-0 bg-gradient-to-r from-green-400/20 via-blue-400/20 via-green-400/20 to-blue-400/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-3 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
-            <div className={`absolute inset-0 bg-gradient-to-r from-orange-400/20 via-yellow-400/20 via-orange-400/20 to-yellow-400/20 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-4 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-purple-400/10 via-pink-400/10 to-pink-400/10 blur-3xl rounded-full -z-10 animate-gradient-shift transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-purple-400/10 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-1 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-pink-400/10 via-orange-400/10 to-orange-400/10 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-2 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-green-400/10 via-blue-400/10 to-blue-400/10 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-3 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-orange-400/10 via-yellow-400/10 to-yellow-400/10 blur-3xl rounded-full -z-10 animate-gradient-shift-delay-4 transition-all duration-2000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} />
           </div>
           <Card className={`bg-gradient-to-br from-black via-navy-900 to-black backdrop-blur-xl rounded-3xl shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] border border-gray-800/30 hover:border-gray-700/50 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'} max-w-5xl mx-auto p-12`}>
             <CardHeader className="text-center py-12">
