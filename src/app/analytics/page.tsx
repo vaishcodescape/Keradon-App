@@ -1,140 +1,266 @@
-"use client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Briefcase, Users, Clock, ChevronRight, Home } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import Link from "next/link"
+"use client"
 
-export default function AnalyticsPage() {
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon, Download, Filter, BarChart3, LineChart, PieChart, Home, Settings, Database } from "lucide-react";
+import { format } from "date-fns";
+import { Navigation } from "@/components/navigation";
+
+export default function Analytics() {
+  const [mounted, setMounted] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [date, setDate] = useState<Date>();
+
+  useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   return (
-    <ScrollArea className="h-full">
-      <div className="flex-1 space-y-4 p-8 pt-6 bg-black text-white min-h-screen">
-        <div className="flex items-center space-x-2 text-sm text-zinc-400 mb-4">
-          <Link href="/dashboard" className="flex items-center hover:text-white transition-colors">
-            <Home className="h-4 w-4 mr-1" />
-            Home
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-white">Analytics</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Analytics</h2>
-            <p className="text-sm text-zinc-400">Monitor your project and tool usage</p>
+    <main className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)]" />
+      
+      <div className="p-8 relative">
+        <Navigation />
+
+        {/* Header */}
+        <div className={cn(
+          "flex justify-between items-center mb-8",
+          "transition-all duration-500 ease-out",
+          isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
+        )}>
+          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+          <div className="flex items-center space-x-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {date ? format(date, "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
           </div>
         </div>
-        <Separator className="bg-zinc-800" />
-        <Tabs defaultValue="overview" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-zinc-900 p-1 text-zinc-400">
-              <TabsTrigger 
-                value="overview" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm"
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger 
-                value="projects" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm"
-              >
-                Projects
-              </TabsTrigger>
-              <TabsTrigger 
-                value="tools" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm"
-              >
-                Tools
-              </TabsTrigger>
-            </TabsList>
-            <div className="text-sm text-zinc-400">
-              Last updated: {new Date().toLocaleDateString()}
-            </div>
-          </div>
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-white">Total Projects</CardTitle>
-                  <Briefcase className="h-4 w-4 text-zinc-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">0</div>
-                  <p className="text-xs text-zinc-400">
-                    Active projects
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-white">Total Tools</CardTitle>
-                  <Activity className="h-4 w-4 text-zinc-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">0</div>
-                  <p className="text-xs text-zinc-400">
-                    Available tools
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-white">Active Users</CardTitle>
-                  <Users className="h-4 w-4 text-zinc-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">0</div>
-                  <p className="text-xs text-zinc-400">
-                    Current users
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-white">Usage Time</CardTitle>
-                  <Clock className="h-4 w-4 text-zinc-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">0h</div>
-                  <p className="text-xs text-zinc-400">
-                    Total usage time
-                  </p>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[
+            { label: 'Total Scrapes', value: '0', change: '0%' },
+            { label: 'Success Rate', value: '0%', change: '0%' },
+            { label: 'Data Points', value: '0', change: '0%' },
+            { label: 'Avg. Response Time', value: '0s', change: '0s' },
+          ].map((stat, index) => (
+            <div
+              key={index}
+              className={cn(
+                "transition-all duration-500 ease-out",
+                isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+              )}
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
+              <Card className="bg-card/80 backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <CardContent className="p-6">
+                  <p className="text-muted-foreground mb-2">{stat.label}</p>
+                  <div className="flex items-end justify-between">
+                    <span className="text-2xl font-bold text-foreground">{stat.value}</span>
+                    <span className={cn(
+                      "text-sm",
+                      stat.change.startsWith('+') ? "text-green-500" : "text-red-500"
+                    )}>
+                      {stat.change}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-          <TabsContent value="projects" className="space-y-4">
-            <Card className="col-span-4 bg-zinc-900 border-zinc-800">
+          ))}
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Charts Section */}
+          <div className={cn(
+            "lg:col-span-2 space-y-6",
+            "transition-all duration-500 ease-out delay-200",
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          )}>
+            <Tabs defaultValue="daily" className="w-full">
+              <div className="flex justify-between items-center mb-4">
+                <TabsList>
+                  <TabsTrigger value="daily">Daily</TabsTrigger>
+                  <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                </TabsList>
+                <Select defaultValue="line">
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select chart type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="line">
+                      <div className="flex items-center gap-2">
+                        <LineChart className="h-4 w-4" />
+                        Line Chart
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bar">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Bar Chart
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pie">
+                      <div className="flex items-center gap-2">
+                        <PieChart className="h-4 w-4" />
+                        Pie Chart
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <TabsContent value="daily" className="space-y-4">
+                <Card className="bg-card/80 backdrop-blur-xl border-border">
+                  <CardHeader>
+                    <CardTitle>Scraping Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Chart visualization will be implemented here
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="weekly" className="space-y-4">
+                <Card className="bg-card/80 backdrop-blur-xl border-border">
+                  <CardHeader>
+                    <CardTitle>Weekly Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Chart visualization will be implemented here
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="monthly" className="space-y-4">
+                <Card className="bg-card/80 backdrop-blur-xl border-border">
+                  <CardHeader>
+                    <CardTitle>Monthly Trends</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Chart visualization will be implemented here
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sidebar */}
+          <div className={cn(
+            "space-y-6",
+            "transition-all duration-500 ease-out delay-300",
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          )}>
+            {/* Recent Activity */}
+            <Card className="bg-card/80 backdrop-blur-xl border-border">
               <CardHeader>
-                <CardTitle className="text-white">Project Analytics</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Detailed analytics for your projects
-                </CardDescription>
+                <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[200px] flex items-center justify-center text-zinc-400">
-                  Project analytics content will go here
+                <div className="space-y-4">
+                  {([] as { action: string; time: string; status: 'success' | 'pending' | 'error' }[]).map((activity, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg bg-accent/5 transition-all duration-300 hover:bg-accent/10",
+                        "transition-all duration-500 ease-out",
+                        isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                      )}
+                      style={{ transitionDelay: `${index * 100 + 400}ms` }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          activity.status === 'success' && "bg-green-500",
+                          activity.status === 'pending' && "bg-yellow-500",
+                          activity.status === 'error' && "bg-red-500"
+                        )} />
+                        <span className="text-foreground">{activity.action}</span>
+                      </div>
+                      <span className="text-muted-foreground text-sm">{activity.time}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-          <TabsContent value="tools" className="space-y-4">
-            <Card className="col-span-4 bg-zinc-900 border-zinc-800">
+
+            {/* Performance Metrics */}
+            <Card className="bg-card/80 backdrop-blur-xl border-border">
               <CardHeader>
-                <CardTitle className="text-white">Tool Analytics</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Detailed analytics for your tools
-                </CardDescription>
+                <CardTitle>Performance Metrics</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[200px] flex items-center justify-center text-zinc-400">
-                  Tool analytics content will go here
+                <div className="space-y-4">
+                  {([] as { label: string; value: string }[]).map((metric, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "transition-all duration-500 ease-out",
+                        isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                      )}
+                      style={{ transitionDelay: `${index * 100 + 800}ms` }}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-muted-foreground">{metric.label}</span>
+                        <span className="text-foreground font-medium">{metric.value}</span>
+                      </div>
+                      <div className="h-2 bg-accent/20 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{
+                            width: metric.value,
+                            transitionDelay: `${index * 100 + 800}ms`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
-    </ScrollArea>
-  )
-} 
+    </main>
+  );
+}

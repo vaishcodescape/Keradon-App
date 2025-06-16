@@ -21,60 +21,60 @@ const projects: Project[] = []
 export default function ProjectsPage() {
   return (
     <ScrollArea className="h-full">
-      <div className="flex-1 space-y-4 p-8 pt-6 bg-black text-white min-h-screen">
-        <div className="flex items-center space-x-2 text-sm text-zinc-400 mb-4">
-          <Link href="/dashboard" className="flex items-center hover:text-white transition-colors">
+      <div className="flex-1 space-y-4 p-8 pt-6 bg-background text-foreground min-h-screen">
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
+          <Link href="/dashboard" className="flex items-center hover:text-foreground transition-colors">
             <Home className="h-4 w-4 mr-1" />
             Home
           </Link>
           <ChevronRight className="h-4 w-4" />
-          <span className="text-white">Projects</span>
+          <span className="text-foreground">Projects</span>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Projects</h2>
-            <p className="text-sm text-zinc-400">Manage and monitor your projects</p>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">Projects</h2>
+            <p className="text-sm text-muted-foreground">Manage and monitor your projects</p>
           </div>
-          <Button className="bg-zinc-900 hover:bg-zinc-800 text-white">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
         </div>
 
-        <Separator className="bg-zinc-800" />
+        <Separator />
 
         <div className="flex items-center space-x-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search projects..."
-              className="pl-8 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-400"
+              className="pl-8 bg-card border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Card key={project.id} className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+            <Card key={project.id} className="bg-card border-border hover:bg-accent/5 transition-colors">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-white">{project.name}</CardTitle>
+                  <CardTitle className="text-foreground">{project.name}</CardTitle>
                   <span className={`px-2 py-1 rounded-full text-xs ${
-                    project.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400'
+                    project.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground'
                   }`}>
                     {project.status}
                   </span>
                 </div>
-                <CardDescription className="text-zinc-400">
+                <CardDescription className="text-muted-foreground">
                   {project.description}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between text-sm text-zinc-400">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <span className="mr-2">Tools:</span>
-                    <span className="text-white">{project.tools}</span>
+                    <span className="text-foreground">{project.tools}</span>
                   </div>
                   <div>
                     Last updated: {project.lastUpdated}

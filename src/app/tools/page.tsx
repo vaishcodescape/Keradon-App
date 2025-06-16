@@ -26,28 +26,28 @@ interface Tool {
 export default function ToolsPage() {
   return (
     <ScrollArea className="h-full">
-      <div className="flex-1 space-y-4 p-8 pt-6 bg-black text-white min-h-screen">
-        <div className="flex items-center space-x-2 text-sm text-zinc-400 mb-4">
-          <Link href="/dashboard" className="flex items-center hover:text-white transition-colors">
+      <div className="flex-1 space-y-4 p-8 pt-6 bg-background text-foreground min-h-screen">
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
+          <Link href="/dashboard" className="flex items-center hover:text-foreground transition-colors">
             <Home className="h-4 w-4 mr-1" />
             Home
           </Link>
           <ChevronRight className="h-4 w-4" />
-          <span className="text-white">Tools</span>
+          <span className="text-foreground">Tools</span>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Tools</h2>
-            <p className="text-sm text-zinc-400">Run and manage your development tools</p>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">Tools</h2>
+            <p className="text-sm text-muted-foreground">Run and manage your development tools</p>
           </div>
         </div>
 
-        <Separator className="bg-zinc-800" />
+        <Separator />
 
         <div className="grid gap-6">
           {/* Tool cards will be rendered here when data is available */}
-          <div className="text-center py-12 text-zinc-400">
+          <div className="text-center py-12 text-muted-foreground">
             <p>No tools available</p>
             <p className="text-sm mt-2">Add your first tool to get started</p>
           </div>
