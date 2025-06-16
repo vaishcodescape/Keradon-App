@@ -11,7 +11,7 @@ A modern desktop application built with Next.js, Electron, and Tailwind CSS, fea
 ## Features
 
 - 🚀 Next.js 15.3.3 for the frontend
-- ⚡ Electron for native application capabilities
+- ⚡ Electron.js for native application capabilities
 - 🎨 Tailwind CSS for styling
 - 🎯 TypeScript support
 - 🛠️ shadcn components for UI elements
