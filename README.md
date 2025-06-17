@@ -1,4 +1,4 @@
-# Keradon App
+# Keradon 
 
 <div align="center">
   <img src="public/logo.png" alt="Keradon Logo" width="200" style="background-color: white; padding: 10px; border-radius: 8px;"/>
