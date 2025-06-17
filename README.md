@@ -15,6 +15,8 @@ A modern desktop application built with Next.js, Electron, and Tailwind CSS, fea
 - 🎨 Tailwind CSS for styling
 - 🎯 TypeScript support
 - 🛠️ shadcn components for UI elements
+- ⚡ Supabase for data management
+- Fast-API for LLM integration
 - 📦 Modern development tooling
 
 ## Prerequisites
