@@ -15,8 +15,6 @@ built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powe
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.1-1E293B?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![shadcn](https://img.shields.io/badge/shadcn-UI-18181B?style=flat-square&logoColor=white)](https://ui.shadcn.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109.2-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-
 ## Features
 
 - 🚀 Next.js 15.3.3 for the frontend
