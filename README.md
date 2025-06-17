@@ -16,7 +16,8 @@ A modern desktop application built with Next.js, Electron, and Tailwind CSS, fea
 - 🎯 TypeScript support
 - 🛠️ shadcn components for UI elements
 - ⚡ Supabase for data management
-- Fast-API for LLM integration
+- 🔐 NextAuth.js for authentication
+- Fast-API for L.L.M integration
 - 📦 Modern development tooling
 
 ## Prerequisites
@@ -39,7 +40,21 @@ npm install
 yarn install
 ```
 
-3. Run the development server:
+3. Set up environment variables:
+Create a `.env` file in the root directory with the following variables:
+```env
+# NextAuth.js
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here # Generate using: openssl rand -base64 32
+
+# Optional OAuth providers (if needed)
+# GOOGLE_ID=your-google-client-id
+# GOOGLE_SECRET=your-google-client-secret
+# GITHUB_ID=your-github-client-id
+# GITHUB_SECRET=your-github-client-secret
+```
+
+4. Run the development server:
 ```bash
 # For web development
 npm run dev
@@ -52,11 +67,36 @@ npm run electron
 yarn electron
 ```
 
-4. Build the application:
+5. Build the application:
 ```bash
 npm run build
 # or
 yarn build
+```
+
+## Authentication
+
+The application uses NextAuth.js for authentication. The following features are available:
+
+- Credentials-based authentication
+- Session management
+- Protected routes
+- Custom sign-in page
+
+To use authentication in your components:
+
+```typescript
+'use client';
+import { useSession, signIn, signOut } from "next-auth/react";
+
+// Access session
+const { data: session } = useSession();
+
+// Sign in
+await signIn();
+
+// Sign out
+await signOut();
 ```
 
 ## Available Scripts
@@ -74,6 +114,7 @@ yarn build
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn
 - **Language**: TypeScript
+- **Authentication**: NextAuth.js
 - **Package Manager**: npm/yarn
 
 ## Contributing
