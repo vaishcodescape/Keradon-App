@@ -1,5 +1,9 @@
 # Keradon App
 
+<div align="center">
+  <img src="public/logo.png" alt="Keradon Logo" width="200"/>
+</div>
+
 A modern desktop application built with Next.js, Electron, and Tailwind CSS, featuring a beautiful UI powered by shadcn components.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.3-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -52,6 +56,11 @@ NEXTAUTH_SECRET=your-secret-key-here # Generate using: openssl rand -base64 32
 # GOOGLE_SECRET=your-google-client-secret
 # GITHUB_ID=your-github-client-id
 # GITHUB_SECRET=your-github-client-secret
+
+# Supabase Configuration
+NEXT_SUPABASE_URL=your-project-url
+NEXT_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 4. Run the development server:
