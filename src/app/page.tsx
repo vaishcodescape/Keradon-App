@@ -60,7 +60,7 @@ export default function Home() {
   const handleNavigation = () => {
     setIsLoading(true);
     setTimeout(() => {
-      router.push('/dashboard');
+      router.push('/sign-in');
     }, 1000);
   };
 
