@@ -3,6 +3,32 @@ import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { UserService } from "@/lib/models/User";
 
+declare module "next-auth" {
+  interface User {
+    id: string;
+    accessToken?: string;
+    refreshToken?: string;
+  }
+  interface Session {
+    accessToken?: string;
+    refreshToken?: string;
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    }
+  }
+}
+
+declare module "next-auth" {
+  interface NextAuth {
+    id: string;
+    accessToken?: string;
+    refreshToken?: string;
+  }
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
@@ -12,58 +38,38 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Missing credentials");
-          }
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-          const { user, session } = await UserService.signIn(
+        try {
+          const { user } = await UserService.signIn(
             credentials.email,
             credentials.password
           );
 
           if (!user) {
-            throw new Error("Invalid credentials");
+            return null;
           }
 
           return {
             id: user.id,
             email: user.email,
             name: user.user_metadata?.name || user.email,
-            accessToken: session?.access_token,
-            refreshToken: session?.refresh_token,
           };
-        } catch (error: any) {
+        } catch (error) {
           console.error("Auth error:", error);
-          throw new Error(error.message || "Authentication failed");
+          return null;
         }
       }
     })
   ],
   session: {
-    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/sign-in",
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.accessToken = token.accessToken;
-        session.refreshToken = token.refreshToken;
-      }
-      return session;
-    },
+    error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
