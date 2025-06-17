@@ -1,7 +1,9 @@
 # Keradon 
 
 <div align="center">
-  <img src="public/logo.png" alt="Keradon Logo" width="200" style="background-color: white; padding: 10px; border-radius: 8px;"/>
+  <div style="background-color: white; display: inline-block; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <img src="public/logo.png" alt="Keradon Logo" width="200"/>
+  </div>
 </div>
 
 A modern desktop application built with Next.js, Electron, and Tailwind CSS, featuring a beautiful UI powered by shadcn components.
