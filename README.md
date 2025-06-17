@@ -6,7 +6,7 @@
   </div>
 </div>
 
-A modern desktop application built with Next.js, Electron, and Tailwind CSS, featuring a beautiful UI powered by shadcn components.
+A modern desktop application designed making data analysis and data analytics easy built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powered by shadcn components and a L.L.M powered by Python using Fast-API.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.3-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Electron](https://img.shields.io/badge/Electron-29.1.0-2C2E3B?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
