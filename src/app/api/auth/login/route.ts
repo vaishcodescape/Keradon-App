@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { UserService } from '@/lib/models/User';
+import { redirect } from 'next/navigation';
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
     }
 
     const data = await UserService.signIn(email, password);
+    redirect('/dashboard');
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json(

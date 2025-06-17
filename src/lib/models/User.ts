@@ -53,13 +53,26 @@ export class UserService {
   }
 
   static async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        console.error("Sign in error:", error);
+        throw error;
+      }
+
+      if (!data.user) {
+        throw new Error("No user found after sign in");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Sign in error:", error);
+      throw error;
+    }
   }
 
   static async signOut() {
