@@ -16,4 +16,4 @@ export const supabase = createClient(
       persistSession: false
     }
   }
-)
+) 
