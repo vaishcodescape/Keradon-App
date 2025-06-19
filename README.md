@@ -140,7 +140,8 @@ await signOut();
 
 ## License
 
-This project is private and proprietary.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 
 ## Support
 
