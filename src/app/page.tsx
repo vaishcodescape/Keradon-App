@@ -15,7 +15,7 @@ const features = [
   "Your AI-Powered Web Scraping Solution",
   "Extract Data with Precision",
   "Transform Raw Data into Insights",
-  "No Noise. No Code. Just Smart Web Scraping."
+  "No Code. No Noise. Just Smart Web Scraping."
 ];
 
 export default function Home() {
