@@ -15,18 +15,16 @@ built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powe
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.1-1E293B?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![shadcn](https://img.shields.io/badge/shadcn-UI-18181B?style=flat-square&logoColor=white)](https://ui.shadcn.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109.2-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-
 ## Features
 
 - 🚀 Next.js 15.3.3 for the frontend
-- ⚛ Electron.js for native application capabilities
-- 🎨 Tailwind CSS for styling
-- 🎯 TypeScript support
+- ⚛ Electron.js 29.1.0 for native application capabilities
+- 🎨 Tailwind CSS 3.4.1 for styling
+- 🎯 TypeScript 5.3.3 support
 - 🛠️ shadcn components for UI elements
-- ⚡ Supabase for data management
-- 🔐 NextAuth.js for authentication
-- ⚡ Fast-API for L.L.M integration
+- ⚡ Supabase 2.39.7 for data management
+- 🔐 NextAuth.js 4.24.7 for authentication
+- ⚡ Fast-API 0.109.2 for L.L.M integration
 - 📦 Modern development tooling
 
 ## Prerequisites
@@ -124,11 +122,12 @@ await signOut();
 ## Tech Stack
 
 - **Framework**: Next.js 15.3.3
-- **Desktop**: Electron.js
-- **Styling**: Tailwind CSS
+- **Desktop**: Electron.js 29.1.0
+- **Styling**: Tailwind CSS 3.4.1
 - **UI Components**: shadcn
-- **Language**: TypeScript
-- **Authentication**: NextAuth.js
+- **Language**: TypeScript 5.3.3
+- **Authentication**: NextAuth.js 4.24.7
+- **Database**: Supabase 2.39.7
 - **Package Manager**: npm/yarn
 
 ## Contributing
@@ -141,7 +140,8 @@ await signOut();
 
 ## License
 
-This project is private and proprietary.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 
 ## Support
 
