@@ -71,10 +71,13 @@ export default function Dashboard() {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-            <Button className={cn(
-              "bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl",
-              isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-            )}>
+            <Button 
+              className={cn(
+                "bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl",
+                isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+              )}
+              onClick={() => router.push('/new_projects')}
+            >
               New Project
             </Button>
             <div className={cn(
@@ -160,21 +163,23 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {[
-                    'Start New Scrape',
-                    'Export Data',
-                    'Create Visualization',
-                    'Schedule Task',
+                    { name: 'New Project', action: () => router.push('/new_projects') },
+                    { name: 'Start New Scrape', action: () => {} },
+                    { name: 'Export Data', action: () => {} },
+                    { name: 'Create Visualization', action: () => {} },
+                    { name: 'Schedule Task', action: () => {} },
                   ].map((action, index) => (
                     <Button
                       key={index}
                       variant="ghost"
+                      onClick={action.action}
                       className={cn(
                         "w-full justify-start px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-all duration-300 hover:scale-[1.02]",
                         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                       )}
                       style={{ transitionDelay: `${index * 100}ms` }}
                     >
-                      {action}
+                      {action.name}
                     </Button>
                   ))}
                 </div>

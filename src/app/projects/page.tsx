@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Home, Plus, Search } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface Project {
   id: number;
@@ -19,6 +20,8 @@ interface Project {
 const projects: Project[] = []
 
 export default function ProjectsPage() {
+  const router = useRouter();
+
   return (
     <ScrollArea className="h-full">
       <div className="flex-1 space-y-4 p-8 pt-6 bg-background text-foreground min-h-screen">
@@ -36,7 +39,10 @@ export default function ProjectsPage() {
             <h2 className="text-3xl font-bold tracking-tight text-foreground">Projects</h2>
             <p className="text-sm text-muted-foreground">Manage and monitor your projects</p>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button 
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => router.push('/new_projects')}
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
