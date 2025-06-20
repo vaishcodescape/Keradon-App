@@ -9,6 +9,8 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
+import { FloatingDock } from "@/components/ui/floating-dock";
+import { IconHome, IconSettings, IconDatabase, IconChartBar, IconTools, IconBrandDocker, IconFolder } from "@tabler/icons-react";
 
 export default function Dashboard() {
   const [isVisible, setIsVisible] = useState(false);
@@ -47,63 +49,8 @@ export default function Dashboard() {
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)]" />
       
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed left-0 top-0 h-screen w-64 bg-card/80 backdrop-blur-xl border-r border-border p-6",
-        "transition-all duration-500 ease-out",
-        isVisible ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"
-      )}>
-        <div className={cn(
-          "mb-8 flex items-center space-x-3",
-          "transition-all duration-500 ease-out delay-100",
-          isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
-        )}>
-          <div className="relative w-10 h-10">
-            <Image
-              src="/logo.png"
-              alt="Keradon Logo"
-              fill
-              className="object-contain rounded-lg"
-              style={{
-                filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'none'
-              }}
-            />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Keradon</h2>
-        </div>
-        <nav className="space-y-2">
-          {routes.map((route, index) => (
-            <div
-              key={route.path}
-              className={cn(
-                "transition-all duration-500 ease-out",
-                isVisible ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
-              )}
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <Link
-                href={route.path}
-                className={cn(
-                  "block w-full transition-all duration-200",
-                  pathname === route.path
-                    ? "bg-accent text-accent-foreground hover:bg-accent/80"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                )}
-              >
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start px-4 py-2"
-                >
-                  {route.name}
-                </Button>
-              </Link>
-            </div>
-          ))}
-        </nav>
-      </aside>
-
       {/* Main Content */}
-      <div className="ml-64 p-8 relative">
+      <div className="p-8 relative">
         {/* Header */}
         <header className={cn(
           "flex justify-between items-center mb-8",
@@ -234,6 +181,18 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+        </div>
+        {/* Floating Dock UI at the bottom center */}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+          <FloatingDock
+            items={[
+              { title: "Dashboard", icon: <IconHome />, href: "/dashboard" },
+              { title: "Analytics", icon: <IconChartBar />, href: "/analytics" },
+              { title: "Projects", icon: <IconFolder />, href: "/projects" },
+              { title: "Tools", icon: <IconTools />, href: "/tools" },
+              { title: "Settings", icon: <IconSettings />, href: "/settings" },
+            ]}
+          />
         </div>
       </div>
 
