@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "./ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { Home, BarChart3, Database, Settings } from "lucide-react";
 
