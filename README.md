@@ -2,7 +2,7 @@
 
 <div align="center">
   <div style="background-color: #18181B; display: inline-block; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <img src="public/logo-white.png" alt="Keradon Logo" width="200"/>
+    <img src="src/assets/logo-white.png" alt="Keradon Logo" width="200"/>
   </div>
 </div>
 

@@ -10,6 +10,7 @@ import { useTheme } from 'next-themes';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { cn } from "@/lib/utils";
+import logo from '@/assets/logo.png';
 
 const features = [
   "Your AI-Powered Web Scraping Solution",
@@ -145,7 +146,7 @@ export default function Home() {
               )}>
                 <div className="relative w-28 h-28">
                   <Image
-                    src="/logo.png"
+                    src={logo}
                     alt="Keradon Logo"
                     fill
                     sizes="(max-width: 768px) 112px, 112px"
@@ -157,7 +158,7 @@ export default function Home() {
                     quality={100}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/logo.png';
+                      target.src = logo.src;
                     }}
                   />
                 </div>
