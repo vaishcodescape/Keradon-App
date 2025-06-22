@@ -103,9 +103,9 @@ export default function SignIn() {
               <Checkbox
                 id="remember"
                 checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
               />
-              <Label htmlFor="remember" className="text-sm">
+              <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
                 Remember me for 30 days
               </Label>
             </div>
