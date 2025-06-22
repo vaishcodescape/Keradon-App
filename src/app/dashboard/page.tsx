@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { IconHome, IconSettings, IconDatabase, IconChartBar, IconTools, IconBrandDocker, IconFolder } from "@tabler/icons-react";
+import { UserMenu } from "@/components/user-menu";
+import { useSession } from "@/lib/hooks/useSession";
 
 export default function Dashboard() {
   const [isVisible, setIsVisible] = useState(false);
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { session, isLoading } = useSession();
 
   const routes = [
     { name: 'Overview', path: '/dashboard' },
@@ -40,8 +43,12 @@ export default function Dashboard() {
     router.push('/');
   };
 
-  if (!mounted) {
-    return null;
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
@@ -57,7 +64,14 @@ export default function Dashboard() {
           "transition-all duration-500 ease-out",
           isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
         )}>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+            {session?.user && (
+              <p className="text-muted-foreground mt-1">
+                Welcome back, {session.user.name || session.user.email}!
+              </p>
+            )}
+          </div>
           <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
@@ -80,12 +94,7 @@ export default function Dashboard() {
             >
               New Project
             </Button>
-            <div className={cn(
-              "w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold hover:bg-primary/90 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl",
-              isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-            )} style={{ transitionDelay: '200ms' }}>
-              U
-            </div>
+            <UserMenu />
           </div>
         </header>
 

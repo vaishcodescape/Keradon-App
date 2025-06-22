@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -56,11 +57,6 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/profile')
       
       if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Please sign in to access settings')
-          router.push('/sign-in')
-          return
-        }
         throw new Error('Failed to fetch profile')
       }
 
@@ -77,7 +73,7 @@ export default function SettingsPage() {
         current_password: '',
         new_password: ''
       })
-      toast.success('Profile loaded successfully')
+      toast.success('Settings loaded successfully')
     } catch (error) {
       console.error('Error fetching profile:', error)
       toast.error('Failed to load profile')
@@ -120,7 +116,12 @@ export default function SettingsPage() {
 
       const updatedProfile = await response.json()
       setProfile(updatedProfile)
-      toast.success('Profile updated successfully!')
+      
+      if (updatedProfile.is_guest) {
+        toast.success('Settings saved successfully!')
+      } else {
+        toast.success('Profile updated successfully!')
+      }
       
       // Clear password fields
       setFormData(prev => ({
@@ -138,7 +139,7 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     const promise = new Promise((resolve, reject) => {
-      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      if (confirm('Are you sure you want to clear all settings? This action cannot be undone.')) {
         resolve(true)
       } else {
         reject(new Error('Cancelled'))
@@ -147,24 +148,27 @@ export default function SettingsPage() {
 
     try {
       await promise
-      setSaving(true)
+      setClearing(true)
       
-      const response = await fetch('/api/user/profile', {
-        method: 'DELETE',
+      // Clear the form and show success message
+      setProfile(null)
+      setFormData({
+        name: '',
+        email: '',
+        role: '',
+        compact_mode: false,
+        email_notifications: false,
+        push_notifications: false,
+        two_factor_enabled: false,
+        current_password: '',
+        new_password: ''
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete account')
-      }
-
-      toast.success('Account deleted successfully')
-      router.push('/sign-in')
+      toast.success('Settings cleared successfully')
     } catch (error: any) {
       if (error.message !== 'Cancelled') {
-        console.error('Error deleting account:', error)
-        toast.error(error.message || 'Failed to delete account')
-        setSaving(false)
+        console.error('Error clearing settings:', error)
+        toast.error(error.message || 'Failed to clear settings')
+        setClearing(false)
       }
     }
   }
@@ -396,6 +400,7 @@ export default function SettingsPage() {
                   type="password" 
                   value={formData.current_password}
                   onChange={(e) => handleInputChange('current_password', e.target.value)}
+                  placeholder="Enter current password"
                 />
               </div>
               <div className="grid gap-2">
@@ -405,12 +410,15 @@ export default function SettingsPage() {
                   type="password" 
                   value={formData.new_password}
                   onChange={(e) => handleInputChange('new_password', e.target.value)}
+                  placeholder="Enter new password"
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add an extra layer of security
+                  </p>
                 </div>
                 <Switch 
                   checked={formData.two_factor_enabled}
@@ -424,22 +432,22 @@ export default function SettingsPage() {
             <Button 
               variant="destructive" 
               onClick={handleDeleteAccount}
-              disabled={saving}
+              disabled={saving || clearing}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Delete Account
+              {clearing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Clear Settings
             </Button>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 ml-auto">
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/dashboard')}
-                disabled={saving}
+                disabled={saving || clearing}
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleSaveChanges}
-                disabled={saving}
+                disabled={saving || clearing}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Save Changes

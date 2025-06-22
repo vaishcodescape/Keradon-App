@@ -68,7 +68,10 @@ export class UserService {
         throw new Error("No user found after sign in");
       }
 
-      return data;
+      return {
+        user: data.user,
+        session: data.session
+      };
     } catch (error) {
       console.error("Sign in error:", error);
       throw error;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { signIn } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
@@ -16,6 +17,7 @@ import { Loading } from "@/components/ui/loading";
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -23,34 +25,48 @@ export default function SignIn() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsFormLoading(true);
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/dashboard",
+      });
 
-    if (result?.error) {
-      toast.error("Invalid credentials. Please try again.");
-    } else {
-      toast.success("Signed in successfully");
-      router.push("/dashboard");
+      if (result?.error) {
+        toast.error("Invalid credentials. Please try again.");
+      } else {
+        toast.success("Signed in successfully");
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      toast.error("An error occurred during sign in");
+    } finally {
+      setIsFormLoading(false);
     }
-    setIsFormLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const result = await signIn("google", {
-      redirect: false,
-    });
+    
+    try {
+      const result = await signIn("google", {
+        redirect: false,
+        callbackUrl: "/dashboard",
+      });
 
-    if (!result?.error) {
-      toast.success("Signed in with Google successfully");
-      router.push("/dashboard");
-    } else {
-      toast.error("Failed to sign in with Google");
+      if (!result?.error) {
+        toast.success("Signed in with Google successfully");
+        router.push("/dashboard");
+      } else {
+        toast.error("Failed to sign in with Google");
+      }
+    } catch (error) {
+      toast.error("An error occurred during Google sign in");
+    } finally {
+      setIsGoogleLoading(false);
     }
-    setIsGoogleLoading(false);
   };
 
   return (
@@ -82,6 +98,16 @@ export default function SignIn() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
+              <Label htmlFor="remember" className="text-sm">
+                Remember me for 30 days
+              </Label>
             </div>
             <Button type="submit" className="w-full" disabled={isFormLoading || isGoogleLoading}>
               {isFormLoading ? (

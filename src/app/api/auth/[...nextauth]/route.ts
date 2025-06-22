@@ -43,7 +43,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const { user } = await UserService.signIn(
+          const { user, session } = await UserService.signIn(
             credentials.email,
             credentials.password
           );
@@ -56,6 +56,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             email: user.email,
             name: user.user_metadata?.name || user.email,
+            accessToken: session?.access_token,
+            refreshToken: session?.refresh_token,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -65,7 +67,32 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  callbacks: {
+    async jwt({ token, user, account }) {
+      // Initial sign in
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: user.accessToken,
+          refreshToken: user.refreshToken,
+          id: user.id,
+        };
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      session.user.id = token.id as string;
+      session.accessToken = token.accessToken as string;
+      session.refreshToken = token.refreshToken as string;
+      return session;
+    },
   },
   pages: {
     signIn: "/sign-in",
