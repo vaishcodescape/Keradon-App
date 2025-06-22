@@ -8,19 +8,177 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronRight, Home, Bell, User, Shield, Palette, Github } from "lucide-react"
+import { ChevronRight, Home, Bell, User, Shield, Palette, Github, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  compact_mode?: boolean;
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  two_factor_enabled?: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: '',
+    compact_mode: false,
+    email_notifications: false,
+    push_notifications: false,
+    two_factor_enabled: false,
+    current_password: '',
+    new_password: ''
+  })
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
+    fetchUserProfile()
   }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/user/profile')
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Please sign in to access settings')
+          router.push('/sign-in')
+          return
+        }
+        throw new Error('Failed to fetch profile')
+      }
+
+      const data = await response.json()
+      setProfile(data)
+      setFormData({
+        name: data.name || '',
+        email: data.email || '',
+        role: data.role || '',
+        compact_mode: data.compact_mode || false,
+        email_notifications: data.email_notifications || false,
+        push_notifications: data.push_notifications || false,
+        two_factor_enabled: data.two_factor_enabled || false,
+        current_password: '',
+        new_password: ''
+      })
+      toast.success('Profile loaded successfully')
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      toast.error('Failed to load profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSaveChanges = async () => {
+    try {
+      setSaving(true)
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          compact_mode: formData.compact_mode,
+          email_notifications: formData.email_notifications,
+          push_notifications: formData.push_notifications,
+          two_factor_enabled: formData.two_factor_enabled,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update profile')
+      }
+
+      const updatedProfile = await response.json()
+      setProfile(updatedProfile)
+      toast.success('Profile updated successfully!')
+      
+      // Clear password fields
+      setFormData(prev => ({
+        ...prev,
+        current_password: '',
+        new_password: ''
+      }))
+    } catch (error: any) {
+      console.error('Error updating profile:', error)
+      toast.error(error.message || 'Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const promise = new Promise((resolve, reject) => {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+        resolve(true)
+      } else {
+        reject(new Error('Cancelled'))
+      }
+    })
+
+    try {
+      await promise
+      setSaving(true)
+      
+      const response = await fetch('/api/user/profile', {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete account')
+      }
+
+      toast.success('Account deleted successfully')
+      router.push('/sign-in')
+    } catch (error: any) {
+      if (error.message !== 'Cancelled') {
+        console.error('Error deleting account:', error)
+        toast.error(error.message || 'Failed to delete account')
+        setSaving(false)
+      }
+    }
+  }
 
   if (!mounted) {
     return null
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -67,6 +225,8 @@ export default function SettingsPage() {
                   <Input 
                     id="name" 
                     placeholder="Your name" 
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -75,11 +235,13 @@ export default function SettingsPage() {
                     id="email" 
                     type="email" 
                     placeholder="Your email" 
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select>
+                  <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
@@ -87,13 +249,13 @@ export default function SettingsPage() {
                       <SelectItem value="developer">
                         Developer
                       </SelectItem>
-                      <SelectItem value="designer">
+                      <SelectItem value="data_scientist">
                         Data Scientist
                       </SelectItem>
-                      <SelectItem value="manager">
+                      <SelectItem value="data_analyst">
                         Data Analyst
                       </SelectItem>
-                      <SelectItem value="manager">
+                      <SelectItem value="business_analyst">
                         Business Analyst
                       </SelectItem>
                     </SelectContent>
@@ -124,7 +286,10 @@ export default function SettingsPage() {
                   <Label>Connection Status</Label>
                   <p className="text-sm text-muted-foreground">Not connected to GitHub</p>
                 </div>
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => toast.info('GitHub integration coming soon!')}
+                >
                   <Github className="h-4 w-4 mr-2" />
                   Connect GitHub
                 </Button>
@@ -161,7 +326,10 @@ export default function SettingsPage() {
                   <Label>Compact Mode</Label>
                   <p className="text-sm text-muted-foreground">Use a more compact layout</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={formData.compact_mode}
+                  onCheckedChange={(checked) => handleInputChange('compact_mode', checked)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -187,14 +355,20 @@ export default function SettingsPage() {
                   <Label>Email Notifications</Label>
                   <p className="text-sm text-muted-foreground">Receive notifications via email</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={formData.email_notifications}
+                  onCheckedChange={(checked) => handleInputChange('email_notifications', checked)}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Push Notifications</Label>
                   <p className="text-sm text-muted-foreground">Receive push notifications</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={formData.push_notifications}
+                  onCheckedChange={(checked) => handleInputChange('push_notifications', checked)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -220,6 +394,8 @@ export default function SettingsPage() {
                 <Input 
                   id="current-password" 
                   type="password" 
+                  value={formData.current_password}
+                  onChange={(e) => handleInputChange('current_password', e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
@@ -227,6 +403,8 @@ export default function SettingsPage() {
                 <Input 
                   id="new-password" 
                   type="password" 
+                  value={formData.new_password}
+                  onChange={(e) => handleInputChange('new_password', e.target.value)}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -234,20 +412,39 @@ export default function SettingsPage() {
                   <Label>Two-Factor Authentication</Label>
                   <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={formData.two_factor_enabled}
+                  onCheckedChange={(checked) => handleInputChange('two_factor_enabled', checked)}
+                />
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex justify-end space-x-4 pt-4 animate-fade-in">
+          <div className="flex justify-between space-x-4 pt-4 animate-fade-in">
             <Button 
-              variant="outline" 
+              variant="destructive" 
+              onClick={handleDeleteAccount}
+              disabled={saving}
             >
-              Cancel
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete Account
             </Button>
-            <Button>
-              Save Changes
-            </Button>
+            <div className="flex space-x-4">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/dashboard')}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveChanges}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       </div>
