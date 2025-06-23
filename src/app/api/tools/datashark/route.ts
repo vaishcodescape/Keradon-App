@@ -1,1 +1,4 @@
-// DataShark API route - proxies to FastAPI backend 
+// DataShark API route 
+export async function GET() {
+    return new Response('Not implemented', { status: 200 });
+  }
