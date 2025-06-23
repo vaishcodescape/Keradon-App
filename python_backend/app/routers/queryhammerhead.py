@@ -1,1 +1,0 @@
-# QueryHammerhead router - data analysis endpoints 
