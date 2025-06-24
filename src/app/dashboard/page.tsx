@@ -6,11 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Moon, Sun } from "lucide-react";
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import Image from 'next/image';
-import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { FloatingDock } from "@/components/ui/floating-dock";
-import { IconHome, IconSettings, IconDatabase, IconChartBar, IconTools, IconBrandDocker, IconFolder } from "@tabler/icons-react";
+import { IconHome, IconSettings, IconChartBar, IconTools,IconFolder } from "@tabler/icons-react";
 import { UserMenu } from "@/components/user-menu";
 import { useSession } from "@/lib/hooks/useSession";
 
