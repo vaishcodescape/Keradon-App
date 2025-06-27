@@ -1289,7 +1289,7 @@ export default function ToolsPage() {
                             <TabsList className="grid w-full grid-cols-3">
                               <TabsTrigger value="seo" className="flex items-center gap-2 text-sm font-medium">
                                 <Search className="h-4 w-4" />
-                                🕸️ SEO Health
+                                SEO Health
                               </TabsTrigger>
                               <TabsTrigger value="pricing" className="flex items-center gap-2 text-sm font-medium">
                                 <TrendingDown className="h-4 w-4" />
