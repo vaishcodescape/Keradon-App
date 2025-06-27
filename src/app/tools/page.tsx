@@ -2,12 +2,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronRight, Home, BarChart3, Globe, HelpCircle, Upload, Search, Database, Activity, Clock, Zap, Command } from "lucide-react"
 import Link from "next/link"
 import { FileUpload } from "@/components/ui/file-upload"
@@ -218,9 +216,9 @@ export default function ToolsPage() {
                 <CardContent className="space-y-4">
                   {/* Tool-specific GUI */}
                   {tool.id === "datashark" && (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-center space-x-2 mb-1">
+                    <div className="space-y-6">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center space-x-2 mb-2">
                           <Globe className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-blue-800 dark:text-blue-400">DataShark</span>
                         </div>
@@ -230,23 +228,24 @@ export default function ToolsPage() {
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold flex items-center space-x-2">
                             <Globe className="w-4 h-4 text-blue-500" />
                             <span>Website URL</span>
                           </label>
                           <Input 
                             placeholder="https://example.com" 
-                            className="h-10 text-base"
+                            className="h-11 text-base"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Output Format</label>
                           <Select>
-                            <SelectTrigger className="h-10">
+                            <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select format" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="text">Text</SelectItem>
                               <SelectItem value="json">JSON</SelectItem>
                               <SelectItem value="csv">CSV</SelectItem>
                               <SelectItem value="xml">XML</SelectItem>
@@ -254,45 +253,33 @@ export default function ToolsPage() {
                           </Select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">CSS Selectors (Optional)</label>
-                        <Input 
-                          placeholder=".title, .price, .description" 
-                          className="h-10"
-                        />
+                      
+                      <div className="flex justify-center pt-2">
+                        <Button 
+                          onClick={() => handleRunTool(tool.id)}
+                          disabled={isRunning}
+                          className="px-8 h-11 text-base font-semibold"
+                        >
+                          {isRunning && activeTool === tool.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Scraping...
+                            </>
+                          ) : (
+                            <>
+                              <Search className="w-4 h-4 mr-2" />
+                              Start Scraping
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Advanced Options</label>
-                        <Textarea 
-                          placeholder="Additional scraping parameters..." 
-                          rows={2}
-                          className="resize-none"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleRunTool(tool.id)}
-                        disabled={isRunning}
-                        className="w-auto mx-auto px-6 h-10 text-base font-semibold"
-                      >
-                        {isRunning && activeTool === tool.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Scraping...
-                          </>
-                        ) : (
-                          <>
-                            <Search className="w-4 h-4 mr-2" />
-                            Start Scraping
-                          </>
-                        )}
-                      </Button>
                     </div>
                   )}
 
                   {tool.id === "queryhammerhead" && (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                        <div className="flex items-center space-x-2 mb-1">
+                    <div className="space-y-6">
+                      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center space-x-2 mb-2">
                           <HelpCircle className="h-4 w-4 text-purple-600" />
                           <span className="font-medium text-purple-800 dark:text-purple-400">QueryHammerhead</span>
                         </div>
@@ -301,14 +288,15 @@ export default function ToolsPage() {
                         </p>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <label className="text-sm font-semibold flex items-center space-x-2">
                           <Upload className="w-4 h-4 text-green-500" />
                           <span>Upload Dataset</span>
                         </label>
                         <FileUpload />
                       </div>
-                      <div className="space-y-2">
+                      
+                      <div className="space-y-3">
                         <label className="text-sm font-semibold flex items-center space-x-2">
                           <HelpCircle className="w-4 h-4 text-purple-500" />
                           <span>Ask a Question</span>
@@ -316,14 +304,15 @@ export default function ToolsPage() {
                         <Textarea 
                           placeholder="What insights would you like to discover from your data?" 
                           rows={3}
-                          className="resize-none text-base"
+                          className="resize-none text-base min-h-[84px]"
                         />
                       </div>
+                      
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Analysis Type</label>
                           <Select>
-                            <SelectTrigger className="h-10">
+                            <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select analysis" />
                             </SelectTrigger>
                             <SelectContent>
@@ -334,10 +323,10 @@ export default function ToolsPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Confidence Level</label>
                           <Select>
-                            <SelectTrigger className="h-10">
+                            <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select confidence" />
                             </SelectTrigger>
                             <SelectContent>
@@ -348,30 +337,33 @@ export default function ToolsPage() {
                           </Select>
                         </div>
                       </div>
-                      <Button 
-                        onClick={() => handleRunTool(tool.id)}
-                        disabled={isRunning}
-                        className="w-auto mx-auto px-6 h-10 text-base font-semibold"
-                      >
-                        {isRunning && activeTool === tool.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Analyzing...
-                          </>
-                        ) : (
-                          <>
-                            <HelpCircle className="w-4 h-4 mr-2" />
-                            Ask Question
-                          </>
-                        )}
-                      </Button>
+                      
+                      <div className="flex justify-center pt-2">
+                        <Button 
+                          onClick={() => handleRunTool(tool.id)}
+                          disabled={isRunning}
+                          className="px-8 h-11 text-base font-semibold"
+                        >
+                          {isRunning && activeTool === tool.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <HelpCircle className="w-4 h-4 mr-2" />
+                              Ask Question
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   )}
 
                   {tool.id === "vizfin" && (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                        <div className="flex items-center space-x-2 mb-1">
+                    <div className="space-y-6">
+                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="flex items-center space-x-2 mb-2">
                           <BarChart3 className="h-4 w-4 text-orange-600" />
                           <span className="font-medium text-orange-800 dark:text-orange-400">VizFin</span>
                         </div>
@@ -380,18 +372,19 @@ export default function ToolsPage() {
                         </p>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <label className="text-sm font-semibold flex items-center space-x-2">
                           <Database className="w-4 h-4 text-orange-500" />
                           <span>Upload Data</span>
                         </label>
                         <FileUpload />
                       </div>
+                      
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Chart Type</label>
                           <Select>
-                            <SelectTrigger className="h-10">
+                            <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select chart type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -403,10 +396,10 @@ export default function ToolsPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Theme</label>
                           <Select>
-                            <SelectTrigger className="h-10">
+                            <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select theme" />
                             </SelectTrigger>
                             <SelectContent>
@@ -417,37 +410,42 @@ export default function ToolsPage() {
                           </Select>
                         </div>
                       </div>
+                      
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">X-Axis Column</label>
-                          <Input placeholder="e.g., date, category, name" className="h-10" />
+                          <Input placeholder="e.g., date, category, name" className="h-11 text-base" />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-sm font-semibold">Y-Axis Column</label>
-                          <Input placeholder="e.g., value, count, amount" className="h-10" />
+                          <Input placeholder="e.g., value, count, amount" className="h-11 text-base" />
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      
+                      <div className="space-y-3">
                         <label className="text-sm font-semibold">Chart Title</label>
-                        <Input placeholder="Enter a descriptive title for your chart" className="h-10" />
+                        <Input placeholder="Enter a descriptive title for your chart" className="h-11 text-base" />
                       </div>
-                      <Button 
-                        onClick={() => handleRunTool(tool.id)}
-                        disabled={isRunning}
-                        className="w-auto mx-auto px-6 h-10 text-base font-semibold"
-                      >
-                        {isRunning && activeTool === tool.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Generating Chart...
-                          </>
-                        ) : (
-                          <>
-                            <BarChart3 className="w-4 h-4 mr-2" />
-                            Create Visualization
-                          </>
-                        )}
-                      </Button>
+                      
+                      <div className="flex justify-center pt-2">
+                        <Button 
+                          onClick={() => handleRunTool(tool.id)}
+                          disabled={isRunning}
+                          className="px-8 h-11 text-base font-semibold"
+                        >
+                          {isRunning && activeTool === tool.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Generating Chart...
+                            </>
+                          ) : (
+                            <>
+                              <BarChart3 className="w-4 h-4 mr-2" />
+                              Create Visualization
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
