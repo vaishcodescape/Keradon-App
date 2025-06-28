@@ -721,8 +721,37 @@ export default function ToolsPage() {
     setIsRunning(true);
     setError('');
     setAdvancedData(null);
+    setProgress(0);
+    setLoadingStage("Initializing advanced analysis...");
+    setTimeElapsed(0);
+    
+    // Start timer for elapsed time
+    const timerInterval = setInterval(() => {
+      setTimeElapsed(prev => prev + 1);
+    }, 1000);
     
     try {
+      // Advanced analysis progress simulation
+      const advancedProgressSteps = [
+        { stage: "Connecting to website...", progress: 15, delay: 800 },
+        { stage: "Fetching page content...", progress: 30, delay: 1200 },
+        { stage: "Analyzing SEO factors...", progress: 50, delay: 1500 },
+        { stage: "Scanning for pricing data...", progress: 65, delay: 1000 },
+        { stage: "Evaluating content quality...", progress: 80, delay: 1200 },
+        { stage: "Generating insights...", progress: 95, delay: 800 },
+      ];
+      
+      // Run progress simulation
+      for (const { stage, progress, delay } of advancedProgressSteps) {
+        setLoadingStage(stage);
+        setProgress(progress);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      // Make the actual API call
+      setLoadingStage("Processing advanced analysis...");
+      setProgress(98);
+      
       const response = await fetch('/api/tools/datashark', {
         method: 'POST',
         headers: {
@@ -736,16 +765,29 @@ export default function ToolsPage() {
 
       const result = await response.json();
       
+      setProgress(100);
+      setLoadingStage("Analysis complete!");
+      
       if (result.success) {
         setAdvancedData(result.data);
         setShowAdvancedReport(true);
       } else {
         setError(result.error || 'Advanced analysis failed');
       }
+      
+      // Brief delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
     } catch (err) {
       setError('Network error occurred during advanced analysis');
     } finally {
-      setIsRunning(false);
+      clearInterval(timerInterval);
+      setTimeout(() => {
+        setIsRunning(false);
+        setProgress(0);
+        setLoadingStage("");
+        setTimeElapsed(0);
+      }, 500);
     }
   };
 
@@ -783,49 +825,55 @@ export default function ToolsPage() {
             </h2>
             <p className="text-lg text-muted-foreground">Interactive GUI for your development tools</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-full border border-primary/20">
-              <Activity className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary">{tools.length} Active Tools</span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>All Systems Operational</span>
-            </div>
-          </div>
+                                    <div className="flex items-center space-x-4">
+                            <Badge variant="outline" className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 text-primary">
+                              <Activity className="w-4 h-4 mr-2" />
+                              {tools.length} Active Tools
+                            </Badge>
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                              All Systems Operational
+                            </Badge>
+                          </div>
         </div>
 
-        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-muted/30 to-muted/20 rounded-xl border border-muted/50">
-          <div className="flex items-center space-x-2">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Quick Access:</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            {tools.map((tool) => (
-              <Button
-                key={tool.id}
-                variant={activeTool === tool.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveTool(tool.id)}
-                className="flex items-center space-x-2 transition-all duration-200 hover:scale-105"
-              >
-                <tool.icon className="w-3 h-3" />
-                <span className="text-xs font-medium">{tool.name}</span>
-                <span className="text-xs opacity-60">{tool.shortcut}</span>
-              </Button>
-            ))}
-          </div>
-          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-            <Command className="w-3 h-3" />
-            <span>Use keyboard shortcuts</span>
-          </div>
-        </div>
+        <Card className="bg-gradient-to-r from-muted/30 to-muted/20 border-muted/50">
+          <CardContent className="p-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Quick Access:</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {tools.map((tool) => (
+                  <Button
+                    key={tool.id}
+                    variant={activeTool === tool.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveTool(tool.id)}
+                    className="flex items-center space-x-2 transition-all duration-200 hover:scale-105"
+                  >
+                    <tool.icon className="w-3 h-3" />
+                    <span className="text-xs font-medium hidden sm:inline">{tool.name}</span>
+                    <span className="text-xs opacity-60 ml-1">
+                      {tool.shortcut}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                <Command className="w-3 h-3" />
+                <span className="hidden md:inline">Use keyboard shortcuts</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {tools.map((tool) => (
           <div key={tool.id} className={activeTool === tool.id ? 'block' : 'hidden'}>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3 mt-6">
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-3 mt-6">
               {/* Tool Info Card */}
-              <Card className="md:col-span-1 border-0 shadow-xl bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
+                              <Card className="lg:col-span-1 border-0 shadow-xl bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardHeader className="pb-4">
                   <div className="flex items-center space-x-4">
                     <div className="w-14 h-14 bg-gradient-to-br from-primary/25 to-primary/15 rounded-2xl flex items-center justify-center shadow-lg border border-primary/10">
@@ -849,9 +897,9 @@ export default function ToolsPage() {
                       }`}></div>
                       <span className="text-sm font-semibold capitalize">{tool.status}</span>
                     </div>
-                    <div className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-700 dark:text-blue-300 border border-blue-200/50 shadow-sm">
+                    <Badge variant="outline" className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-700 dark:text-blue-300 border-blue-200/50">
                       {tool.usage} Usage
-                    </div>
+                    </Badge>
                   </div>
                   
                   <div className="p-4 bg-gradient-to-r from-muted/40 to-muted/20 rounded-xl border border-muted/50">
@@ -869,7 +917,7 @@ export default function ToolsPage() {
               </Card>
 
               {/* Tool Interface Card */}
-              <Card className="md:col-span-2 border-0 shadow-xl bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
+              <Card className="lg:col-span-2 border-0 shadow-xl bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center space-x-2">
                     <div className="w-2 h-2 bg-primary rounded-full"></div>
@@ -884,9 +932,9 @@ export default function ToolsPage() {
                         <div className="flex items-center space-x-2 mb-2">
                           <Globe className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-blue-800 dark:text-blue-400">DataShark</span>
-                          <span className="text-xs px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full">
+                          <Badge variant="secondary" className="bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
                             Powered by ScraperAPI
-                          </span>
+                          </Badge>
                         </div>
                         <p className="text-sm text-blue-700 dark:text-blue-300">
                           DataShark can extract structured data from any website using ScraperAPI. Enter the URL and configure your scraping parameters.
@@ -940,7 +988,7 @@ export default function ToolsPage() {
                         </div>
                       )}
 
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                         <div className="space-y-3">
                           <label className="text-sm font-semibold flex items-center space-x-2">
                             <Globe className="w-4 h-4 text-blue-500" />
@@ -952,30 +1000,34 @@ export default function ToolsPage() {
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             disabled={isRunning && activeTool === tool.id}
+                            type="url"
+                            aria-label="Website URL to scrape"
                           />
                           <div className="flex flex-wrap gap-2 mt-2">
                             <span className="text-xs text-muted-foreground">Try:</span>
                             {['https://news.ycombinator.com', 'https://example.com', 'https://httpbin.org/html'].map((exampleUrl) => (
-                              <button
+                              <Button
                                 key={exampleUrl}
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setUrl(exampleUrl)}
                                 disabled={isRunning && activeTool === tool.id}
-                                className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-100 dark:disabled:hover:bg-blue-900/30"
+                                className="text-xs h-6 px-2 py-1"
                               >
                                 {exampleUrl.replace('https://', '')}
-                              </button>
+                              </Button>
                             ))}
                           </div>
                         </div>
                         <div className="space-y-3">
                           <label className="text-sm font-semibold flex items-center justify-between">
                             <span>Output Format</span>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200 flex items-center gap-1">
-                              <FileDown className="w-3 h-3" />
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <FileDown className="w-3 h-3 mr-1" />
                               PDF Export Available
-                            </span>
+                            </Badge>
                           </label>
-                          <Select value={format} onValueChange={setFormat} disabled={isRunning && activeTool === tool.id}>
+                          <Select value={format} onValueChange={setFormat} disabled={isRunning && activeTool === tool.id} aria-label="Output format selection">
                             <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select format" />
                             </SelectTrigger>
@@ -1006,16 +1058,36 @@ export default function ToolsPage() {
                               </SelectItem>
                             </SelectContent>
                           </Select>
-                          <div className="text-xs text-muted-foreground">
-                            {format === 'json' && '💡 Best for APIs and structured data processing'}
-                            {format === 'text' && '💡 Best for reading and simple text analysis'}
-                            {format === 'csv' && '💡 Best for Excel, Google Sheets, and data analysis'}
-                            {format === 'xml' && '💡 Best for systems that require XML format'}
+                          <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-md border">
+                            {format === 'json' && (
+                              <div className="flex items-center gap-2">
+                                <span>💡</span>
+                                <span>Best for APIs and structured data processing</span>
+                              </div>
+                            )}
+                            {format === 'text' && (
+                              <div className="flex items-center gap-2">
+                                <span>💡</span>
+                                <span>Best for reading and simple text analysis</span>
+                              </div>
+                            )}
+                            {format === 'csv' && (
+                              <div className="flex items-center gap-2">
+                                <span>💡</span>
+                                <span>Best for Excel, Google Sheets, and data analysis</span>
+                              </div>
+                            )}
+                            {format === 'xml' && (
+                              <div className="flex items-center gap-2">
+                                <span>💡</span>
+                                <span>Best for systems that require XML format</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex justify-center items-center gap-4 pt-2">
+                      <div className="flex flex-wrap justify-center items-center gap-4 pt-2">
                         <Button 
                           onClick={() => handleRunTool(tool.id)}
                           disabled={isRunning || !url.trim()}
@@ -1037,10 +1109,19 @@ export default function ToolsPage() {
                           variant="outline" 
                           onClick={handleAdvancedAnalysis}
                           disabled={isRunning || !url.trim()}
-                          className="px-6 h-11 text-base"
+                          className="px-6 h-11 text-base border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/20"
                         >
-                          <BarChart3 className="w-4 h-4 mr-2" />
-                          Advanced Analysis
+                          {isRunning && activeTool === tool.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <BarChart3 className="w-4 h-4 mr-2" />
+                              Advanced Analysis
+                            </>
+                          )}
                         </Button>
                         {(results || error || url) && (
                           <Button 
@@ -1091,41 +1172,44 @@ export default function ToolsPage() {
                             </div>
                             <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 overflow-hidden shadow-inner">
                               <div 
-                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out shadow-sm"
+                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-700 ease-out shadow-sm relative"
                                 style={{width: `${progress}%`}}
                               >
                                 <div className="h-full bg-gradient-to-r from-white/20 to-transparent rounded-full"></div>
+                                {progress > 0 && progress < 100 && (
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                                )}
                               </div>
                             </div>
                           </div>
 
                           {/* Progress Steps */}
                           <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div className={`flex items-center space-x-1 p-2 rounded ${progress >= 25 ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                            <Badge variant={progress >= 25 ? "default" : "secondary"} className={`flex items-center gap-1 justify-center ${progress >= 25 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                               <div className={`w-2 h-2 rounded-full ${progress >= 25 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <span>Connect</span>
-                            </div>
-                            <div className={`flex items-center space-x-1 p-2 rounded ${progress >= 50 ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                              Connect
+                            </Badge>
+                            <Badge variant={progress >= 50 ? "default" : "secondary"} className={`flex items-center gap-1 justify-center ${progress >= 50 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                               <div className={`w-2 h-2 rounded-full ${progress >= 50 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <span>Fetch</span>
-                            </div>
-                            <div className={`flex items-center space-x-1 p-2 rounded ${progress >= 75 ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                              Fetch
+                            </Badge>
+                            <Badge variant={progress >= 75 ? "default" : "secondary"} className={`flex items-center gap-1 justify-center ${progress >= 75 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                               <div className={`w-2 h-2 rounded-full ${progress >= 75 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <span>Extract</span>
-                            </div>
-                            <div className={`flex items-center space-x-1 p-2 rounded ${progress >= 100 ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                              Extract
+                            </Badge>
+                            <Badge variant={progress >= 100 ? "default" : "secondary"} className={`flex items-center gap-1 justify-center ${progress >= 100 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                               <div className={`w-2 h-2 rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <span>Complete</span>
-                            </div>
+                              Complete
+                            </Badge>
                           </div>
 
                           {/* Additional Info */}
                           <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-700">
                             <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
-                                                              <div className="flex items-center space-x-4">
-                                  <span>Aggressive extraction enabled</span>
-                                  <span>Enhanced ScraperAPI mode</span>
-                                </div>
+                              <div className="flex items-center space-x-4">
+                                <span>Aggressive extraction enabled</span>
+                                <span>Enhanced ScraperAPI mode</span>
+                              </div>
                               <span>Max timeout: 60s</span>
                             </div>
                           </div>
@@ -1286,24 +1370,24 @@ export default function ToolsPage() {
 
                           {/* Detailed Analysis Tabs */}
                           <Tabs defaultValue="seo" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3">
-                              <TabsTrigger value="seo" className="flex items-center gap-2 text-sm font-medium">
+                            <TabsList className="flex w-full justify-start">
+                              <TabsTrigger value="seo" className="flex items-center gap-2">
                                 <Search className="h-4 w-4" />
-                                SEO Health
+                                <span>SEO Health</span>
                               </TabsTrigger>
-                              <TabsTrigger value="pricing" className="flex items-center gap-2 text-sm font-medium">
+                              <TabsTrigger value="pricing" className="flex items-center gap-2">
                                 <TrendingDown className="h-4 w-4" />
-                                Price Tracking
+                                <span>Price Tracking</span>
                               </TabsTrigger>
-                              <TabsTrigger value="content" className="flex items-center gap-2 text-sm font-medium">
+                              <TabsTrigger value="content" className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
-                                Content Blueprint
+                                <span>Content Blueprint</span>
                               </TabsTrigger>
                             </TabsList>
 
                             {/* SEO Health Tab */}
                             <TabsContent value="seo" className="space-y-6 mt-6">
-                              {advancedData.seoHealth && (
+                              {advancedData?.seoHealth && (
                                 <>
                                   <Card>
                                     <CardHeader>
@@ -1437,7 +1521,7 @@ export default function ToolsPage() {
 
                             {/* Price Tracking Tab */}
                             <TabsContent value="pricing" className="space-y-6 mt-6">
-                              {advancedData.priceTracking && (
+                              {advancedData?.priceTracking && (
                                 <>
                                   <Card>
                                     <CardHeader>
@@ -1567,7 +1651,7 @@ export default function ToolsPage() {
 
                             {/* Content Blueprint Tab */}
                             <TabsContent value="content" className="space-y-6 mt-6">
-                              {advancedData.contentBlueprint && (
+                              {advancedData?.contentBlueprint && (
                                 <>
                                   <Card>
                                     <CardHeader>
@@ -1680,18 +1764,56 @@ export default function ToolsPage() {
 
                                   {/* Content Quality Factors */}
                                   {advancedData.contentBlueprint.contentQuality.factors?.length > 0 && (
-                                    <Card>
-                                      <CardHeader>
-                                        <CardTitle>Quality Factors</CardTitle>
+                                    <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 via-white to-emerald-50/30 dark:from-green-900/20 dark:via-gray-900 dark:to-emerald-900/10">
+                                      <CardHeader className="pb-6">
+                                        <CardTitle className="flex items-center gap-3">
+                                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-md">
+                                            <CheckCircle className="h-4 w-4 text-white" />
+                                          </div>
+                                          <div>
+                                            <h3 className="text-lg font-bold">Quality Factors</h3>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                              {advancedData.contentBlueprint.contentQuality.factors.length} positive quality indicators detected
+                                            </p>
+                                          </div>
+                                        </CardTitle>
                                       </CardHeader>
                                       <CardContent>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                           {advancedData.contentBlueprint.contentQuality.factors.map((factor: string, idx: number) => (
-                                            <div key={idx} className="flex items-center gap-2 p-2 bg-green-50 rounded">
-                                              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                                              <span className="text-sm">{factor}</span>
+                                            <div 
+                                              key={idx} 
+                                              className="group flex items-start gap-3 p-4 bg-white/80 dark:bg-gray-800/50 rounded-xl border border-green-100 dark:border-green-800/30 hover:shadow-md hover:border-green-200 dark:hover:border-green-700/50 transition-all duration-200"
+                                            >
+                                              <div className="w-6 h-6 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
+                                                <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed">
+                                                  {factor}
+                                                </p>
+                                              </div>
+                                              <div className="w-6 h-6 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span className="text-xs font-bold text-green-600 dark:text-green-400">
+                                                  ✓
+                                                </span>
+                                              </div>
                                             </div>
                                           ))}
+                                        </div>
+                                        
+                                        {/* Summary Footer */}
+                                        <div className="mt-6 pt-4 border-t border-green-100 dark:border-green-800/30">
+                                          <div className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                              <span className="font-medium">All quality factors passed</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-muted-foreground">
+                                              <Star className="h-3 w-3" />
+                                              <span>High quality content detected</span>
+                                            </div>
+                                          </div>
                                         </div>
                                       </CardContent>
                                     </Card>
@@ -1709,20 +1831,20 @@ export default function ToolsPage() {
                             <h3 className="text-xl font-bold">Scraping Results</h3>
                             <div className="flex items-center space-x-4">
                               {dataRestored && (
-                                <div className="flex items-center space-x-2 text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200 animate-fade-in">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                  <span>Data restored from cache</span>
-                                </div>
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 animate-fade-in">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-2"></div>
+                                  Data restored from cache
+                                </Badge>
                               )}
-                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                <span>Success</span>
-                              </div>
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                                Success
+                              </Badge>
                             </div>
                           </div>
 
                           {results.metadata && (
-                            <div className="grid gap-4 md:grid-cols-4 text-sm">
+                            <div className="grid gap-4 grid-cols-2 md:grid-cols-4 text-sm">
                               <Card className="p-4">
                                 <div className="flex items-center space-x-2">
                                   <Database className="w-4 h-4 text-blue-500" />
@@ -1764,83 +1886,192 @@ export default function ToolsPage() {
 
                           {results.metadata?.format === 'json' && typeof results.data === 'object' ? (
                             <Tabs defaultValue="overview" className="w-full">
-                              <div className="flex items-center justify-between mb-4">
-                                <TabsList className="grid w-full grid-cols-6">
-                                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                                  <TabsTrigger value="contact">Contact</TabsTrigger>
-                                  <TabsTrigger value="links">Links</TabsTrigger>
-                                  <TabsTrigger value="patterns">Patterns</TabsTrigger>
-                                  <TabsTrigger value="content">Content</TabsTrigger>
-                                  <TabsTrigger value="raw">Raw Data</TabsTrigger>
-                                </TabsList>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const dataStr = JSON.stringify(results.data, null, 2);
-                                      copyToClipboard(dataStr, 'copy-all');
-                                    }}
-                                    disabled={copyStatus['copy-all'] === 'copying'}
-                                    className={
-                                      copyStatus['copy-all'] === 'success' 
-                                        ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' 
-                                        : copyStatus['copy-all'] === 'error'
-                                        ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                                        : ''
-                                    }
-                                  >
-                                    {copyStatus['copy-all'] === 'copying' && (
-                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
-                                    )}
-                                    {copyStatus['copy-all'] === 'success' && (
-                                      <Check className="w-3 h-3 mr-1" />
-                                    )}
-                                    {copyStatus['copy-all'] === 'error' && (
-                                      <X className="w-3 h-3 mr-1" />
-                                    )}
-                                    {!copyStatus['copy-all'] || copyStatus['copy-all'] === 'idle' ? (
-                                      <Copy className="w-3 h-3 mr-1" />
-                                    ) : null}
-                                    {copyStatus['copy-all'] === 'copying' 
-                                      ? 'Copying...' 
-                                      : copyStatus['copy-all'] === 'success' 
-                                      ? 'Copied!' 
-                                      : copyStatus['copy-all'] === 'error'
-                                      ? 'Failed'
-                                      : 'Copy All'
-                                    }
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const dataStr = JSON.stringify(results.data, null, 2);
-                                      const blob = new Blob([dataStr], { type: 'application/json' });
-                                      const url = URL.createObjectURL(blob);
-                                      const a = document.createElement('a');
-                                      a.href = url;
-                                      a.download = `datashark-${Date.now()}.json`;
-                                      document.body.appendChild(a);
-                                      a.click();
-                                      document.body.removeChild(a);
-                                      URL.revokeObjectURL(url);
-                                    }}
-                                  >
-                                    <Download className="w-3 h-3 mr-1" />
-                                    JSON
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => generatePDF(results.data, results.metadata)}
-                                    className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
-                                  >
-                                    <FileDown className="w-3 h-3 mr-1" />
-                                    PDF
-                                  </Button>
-                                </div>
-                              </div>
+                              {/* Enhanced Quick Access Bar */}
+                              <Card className="border-0 shadow-md bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-900/20 dark:to-indigo-900/20 mb-6">
+                                <CardContent className="p-4">
+                                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                                    {/* Data Navigation */}
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                                          <Search className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                          <h4 className="font-semibold text-sm text-slate-700 dark:text-slate-300">Data Explorer</h4>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">Navigate through {Object.keys(results.data).length} data sections</p>
+                                        </div>
+                                      </div>
+                                      
+                                      <TabsList className="grid w-full grid-cols-6 h-9 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
+                                        <TabsTrigger 
+                                          value="overview" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <Globe className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Overview</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                          value="contact" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <Mail className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Contact</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                          value="links" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <LinkIcon className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Links</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                          value="patterns" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <Hash className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Patterns</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                          value="content" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <FileText className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Content</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                          value="raw" 
+                                          className="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100"
+                                        >
+                                          <Database className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">Raw</span>
+                                        </TabsTrigger>
+                                      </TabsList>
+                                    </div>
+                                    
+                                    {/* Quick Actions Panel */}
+                                    <div className="flex flex-col gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 rounded-md flex items-center justify-center shadow-sm">
+                                          <Download className="h-3 w-3 text-white" />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Quick Export</span>
+                                        <Badge variant="outline" className="text-xs bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50">
+                                          {(JSON.stringify(results.data).length / 1024).toFixed(1)}KB
+                                        </Badge>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const dataStr = JSON.stringify(results.data, null, 2);
+                                            copyToClipboard(dataStr, 'copy-all');
+                                          }}
+                                          disabled={copyStatus['copy-all'] === 'copying'}
+                                          className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                                            copyStatus['copy-all'] === 'success' 
+                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm' 
+                                              : copyStatus['copy-all'] === 'error'
+                                              ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 shadow-sm'
+                                              : 'bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm'
+                                          }`}
+                                        >
+                                          {copyStatus['copy-all'] === 'copying' && (
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
+                                          )}
+                                          {copyStatus['copy-all'] === 'success' && (
+                                            <Check className="w-3 h-3 mr-1" />
+                                          )}
+                                          {copyStatus['copy-all'] === 'error' && (
+                                            <X className="w-3 h-3 mr-1" />
+                                          )}
+                                          {!copyStatus['copy-all'] || copyStatus['copy-all'] === 'idle' ? (
+                                            <Copy className="w-3 h-3 mr-1" />
+                                          ) : null}
+                                          <span className="hidden sm:inline">
+                                            {copyStatus['copy-all'] === 'copying' 
+                                              ? 'Copying...' 
+                                              : copyStatus['copy-all'] === 'success' 
+                                              ? 'Copied!' 
+                                              : copyStatus['copy-all'] === 'error'
+                                              ? 'Failed'
+                                              : 'Copy'
+                                            }
+                                          </span>
+                                        </Button>
+                                        
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const dataStr = JSON.stringify(results.data, null, 2);
+                                            const blob = new Blob([dataStr], { type: 'application/json' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `datashark-${new Date().toISOString().split('T')[0]}.json`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                          }}
+                                          className="h-8 px-3 text-xs font-medium bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-700 dark:hover:text-blue-300 transition-all duration-200 hover:shadow-sm"
+                                        >
+                                          <Download className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">JSON</span>
+                                        </Button>
+                                        
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            // Export as CSV
+                                            const csvData = Object.entries(results.data).map(([key, value]) => 
+                                              `"${key}","${JSON.stringify(value).replace(/"/g, '""')}"`
+                                            ).join('\n');
+                                            const blob = new Blob([`"Section","Data"\n${csvData}`], { type: 'text/csv' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `datashark-${new Date().toISOString().split('T')[0]}.csv`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                          }}
+                                          className="h-8 px-3 text-xs font-medium bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 dark:hover:text-emerald-300 transition-all duration-200 hover:shadow-sm"
+                                        >
+                                          <FileDown className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">CSV</span>
+                                        </Button>
+                                        
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => generatePDF(results.data, results.metadata)}
+                                          className="h-8 px-3 text-xs font-medium bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50 hover:bg-red-50 hover:border-red-200 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-300 transition-all duration-200 hover:shadow-sm"
+                                        >
+                                          <FileDown className="w-3 h-3 mr-1" />
+                                          <span className="hidden sm:inline">PDF</span>
+                                        </Button>
+                                      </div>
+                                      
+                                      {/* Clear Data Button */}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleClearResults}
+                                        className="h-8 px-3 text-xs font-medium bg-white/60 dark:bg-slate-800/60 border-slate-200/50 dark:border-slate-700/50 hover:bg-red-50 hover:border-red-200 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-300 transition-all duration-200 hover:shadow-sm"
+                                      >
+                                        <Trash2 className="w-3 h-3 mr-1" />
+                                        <span className="hidden sm:inline">Clear All Data</span>
+                                        <span className="sm:hidden">Clear</span>
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
 
                               <TabsContent value="overview" className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-2">
@@ -2502,9 +2733,9 @@ export default function ToolsPage() {
                                 <CardTitle className="flex items-center justify-between">
                                   <span>Extracted Data</span>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs px-2 py-1 bg-muted rounded capitalize">
-                                      {results.metadata?.format || 'text'}
-                                    </span>
+                                                                    <Badge variant="outline" className="capitalize">
+                                  {results.metadata?.format || 'text'}
+                                </Badge>
                                     <Button
                                       variant="outline"
                                       size="sm"
