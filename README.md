@@ -17,7 +17,7 @@ built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powe
 ## Features
 
 - 🚀 Next.js 15.3.3 for the frontend
-- ⚛ Electron.js 29.1.0 for native application capabilities
+- Cross Native Desktop feature coming soon!
 - 🎨 Tailwind CSS 3.4.1 for styling
 - 🎯 TypeScript 5.3.3 support
 - 🛠️ shadcn components for UI elements
