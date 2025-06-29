@@ -39,6 +39,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.18.1",
     "geist": "^1.4.2",
+    "groq-sdk": "^0.26.0",
     "lucide-react": "^0.519.0",
     "motion": "^12.18.1",
     "next": "15.3.4",

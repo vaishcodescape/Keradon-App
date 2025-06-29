@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronRight, Home, BarChart3, Globe, HelpCircle, Upload, Search, Database, Activity, Clock, Zap, Command } from "lucide-react"
 import Link from "next/link"
 import { FileUpload } from "@/components/ui/file-upload"
+import { QueryHammerheadInterface } from "@/components/queryhammerhead-interface"
 
 interface Tool {
   id: string;
@@ -277,87 +278,7 @@ export default function ToolsPage() {
                   )}
 
                   {tool.id === "queryhammerhead" && (
-                    <div className="space-y-6">
-                      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <HelpCircle className="h-4 w-4 text-purple-600" />
-                          <span className="font-medium text-purple-800 dark:text-purple-400">QueryHammerhead</span>
-                        </div>
-                        <p className="text-sm text-purple-700 dark:text-purple-300">
-                          QueryHammerhead uses AI to analyze your data and answer questions in natural language. Upload your dataset and ask away!
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold flex items-center space-x-2">
-                          <Upload className="w-4 h-4 text-green-500" />
-                          <span>Upload Dataset</span>
-                        </label>
-                        <FileUpload />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold flex items-center space-x-2">
-                          <HelpCircle className="w-4 h-4 text-purple-500" />
-                          <span>Ask a Question</span>
-                        </label>
-                        <Textarea 
-                          placeholder="What insights would you like to discover from your data?" 
-                          rows={3}
-                          className="resize-none text-base min-h-[84px]"
-                        />
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">Analysis Type</label>
-                          <Select>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select analysis" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="trends">Trend Analysis</SelectItem>
-                              <SelectItem value="patterns">Pattern Recognition</SelectItem>
-                              <SelectItem value="predictions">Predictions</SelectItem>
-                              <SelectItem value="summary">Data Summary</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">Confidence Level</label>
-                          <Select>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select confidence" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="high">High (90%+)</SelectItem>
-                              <SelectItem value="medium">Medium (70-90%)</SelectItem>
-                              <SelectItem value="low">Low (50-70%)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-center pt-2">
-                        <Button 
-                          onClick={() => handleRunTool(tool.id)}
-                          disabled={isRunning}
-                          className="px-8 h-11 text-base font-semibold"
-                        >
-                          {isRunning && activeTool === tool.id ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Analyzing...
-                            </>
-                          ) : (
-                            <>
-                              <HelpCircle className="w-4 h-4 mr-2" />
-                              Ask Question
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                    <QueryHammerheadInterface />
                   )}
 
                   {tool.id === "vizfin" && (
