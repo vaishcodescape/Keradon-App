@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { UserService } from "@/lib/models/User";
 
 declare module "next-auth" {
@@ -30,6 +31,10 @@ declare module "next-auth/jwt" {
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -77,12 +82,39 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       // Initial sign in
       if (account && user) {
-        return {
-          ...token,
-          accessToken: user.accessToken,
-          refreshToken: user.refreshToken,
-          id: user.id,
-        };
+        if (account.provider === "google") {
+          // For Google OAuth, create or get user from Supabase
+          try {
+            const { user: supabaseUser } = await UserService.signInWithOAuth({
+              email: user.email!,
+              name: user.name || user.email!,
+              provider: 'google',
+              providerId: user.id,
+              image: user.image,
+            });
+            
+            return {
+              ...token,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
+              id: supabaseUser?.id || user.id,
+            };
+          } catch (error) {
+            console.error("Google OAuth error:", error);
+            return {
+              ...token,
+              id: user.id,
+            };
+          }
+        } else {
+          // For credentials provider
+          return {
+            ...token,
+            accessToken: user.accessToken,
+            refreshToken: user.refreshToken,
+            id: user.id,
+          };
+        }
       }
       return token;
     },

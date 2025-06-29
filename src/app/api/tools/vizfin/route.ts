@@ -2,6 +2,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
+import Groq from 'groq-sdk';
+
+// Initialize Groq client for LLM capabilities
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,8 +49,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No data found in file' }, { status: 400 });
     }
 
+    // Filter out empty rows
+    parsedData = parsedData.filter(row => row && Object.keys(row).length > 0);
+    
+    if (parsedData.length === 0) {
+      return NextResponse.json({ error: 'No valid data rows found in file' }, { status: 400 });
+    }
+
     // Get column names from the first row
-    const columns = Object.keys(parsedData[0]);
+    const columns = Object.keys(parsedData[0]).filter(col => col && col.trim() !== '');
 
     // Validate that specified columns exist
     if (xAxis && !columns.includes(xAxis)) {
@@ -56,33 +69,65 @@ export async function POST(request: NextRequest) {
 
     // Process data for chart
     let chartData = parsedData;
+    let finalXAxis = xAxis;
+    let finalYAxis = yAxis;
 
-    // If specific axes are provided, filter and format the data
-    if (xAxis && yAxis) {
-      chartData = parsedData.map(row => ({
-        [xAxis]: row[xAxis],
-        [yAxis]: parseFloat(row[yAxis]) || 0,
-        ...row // Include all original data for tooltips
-      })).filter(row => row[xAxis] !== null && row[xAxis] !== undefined);
+    // Generate data insights first
+    const insights = generateDataInsights(parsedData, columns);
+
+    // Auto-detect axes if not provided
+    if (!xAxis || !yAxis) {
+      // Auto-select X-axis (prefer text/date columns)
+      if (!finalXAxis) {
+        finalXAxis = [...insights.textColumns, ...insights.dateColumns][0] || columns[0];
+      }
+      
+      // Auto-select Y-axis (prefer numeric columns)
+      if (!finalYAxis) {
+        finalYAxis = insights.numericColumns[0] || columns[1] || columns[0];
+      }
     }
 
-    // Generate data insights
-    const insights = generateDataInsights(parsedData, columns);
+    // Generate LLM-powered insights and recommendations
+    let llmInsights = null;
+    try {
+      llmInsights = await generateLLMInsights(parsedData, columns, insights, {
+        chartType: chartType || 'bar',
+        xAxis: finalXAxis,
+        yAxis: finalYAxis,
+        fileName: file.name
+      });
+    } catch (error) {
+      console.warn('Failed to generate LLM insights:', error);
+    }
+
+    // Process and format the data
+    if (finalXAxis && finalYAxis) {
+      chartData = parsedData.map(row => ({
+        [finalXAxis]: row[finalXAxis],
+        [finalYAxis]: parseFloat(row[finalYAxis]) || 0,
+        ...row // Include all original data for tooltips
+      })).filter(row => row[finalXAxis] !== null && row[finalXAxis] !== undefined);
+    }
 
     return NextResponse.json({
       success: true,
       data: chartData,
       columns,
-      insights,
+      insights: {
+        ...insights,
+        llmInsights: llmInsights
+      },
       metadata: {
         fileName: file.name,
         fileSize: file.size,
         rowCount: parsedData.length,
         columnCount: columns.length,
         chartType: chartType || 'bar',
-        xAxis,
-        yAxis,
-        title: chartTitle || `${file.name} Visualization`
+        xAxis: finalXAxis,
+        yAxis: finalYAxis,
+        title: chartTitle || llmInsights?.suggestedTitle || `${file.name} Visualization`,
+        recommendedChartType: llmInsights?.recommendedChartType || (chartType || 'bar')
       }
     });
 
@@ -164,10 +209,82 @@ function getMostCommon(arr: any[]) {
     .map(([value, count]) => ({ value, count }));
 }
 
+// Generate LLM-powered insights and recommendations
+async function generateLLMInsights(data: any[], columns: string[], basicInsights: any, chartConfig: any) {
+  if (!process.env.GROQ_API_KEY) {
+    return null;
+  }
+
+  try {
+    // Prepare data sample for LLM analysis (first 10 rows)
+    const dataSample = data.slice(0, 10);
+    const dataPreview = {
+      columns: columns,
+      sampleRows: dataSample,
+      totalRows: data.length,
+      columnTypes: basicInsights.columnTypes,
+      numericColumns: basicInsights.numericColumns,
+      textColumns: basicInsights.textColumns,
+      dateColumns: basicInsights.dateColumns
+    };
+
+    const systemPrompt = `You are VizFin AI, an expert data visualization consultant. Analyze the provided dataset and generate intelligent insights and recommendations.
+
+Your response must be a valid JSON object with this exact structure:
+{
+  "keyInsights": ["insight1", "insight2", "insight3"],
+  "recommendedChartType": "bar|line|area|pie",
+  "suggestedTitle": "Chart Title",
+  "dataStory": "Brief narrative about what the data tells us",
+  "recommendations": ["recommendation1", "recommendation2"],
+  "patterns": ["pattern1", "pattern2"],
+  "businessImplications": ["implication1", "implication2"]
+}
+
+Focus on:
+- Key patterns and trends in the data
+- Most suitable chart type for the data structure
+- Meaningful insights that would help business decisions
+- Clear, actionable recommendations`;
+
+    const userPrompt = `Analyze this dataset:
+
+File: ${chartConfig.fileName}
+Current Chart Config: ${chartConfig.chartType} chart with X-axis: ${chartConfig.xAxis}, Y-axis: ${chartConfig.yAxis}
+
+Dataset Overview:
+${JSON.stringify(dataPreview, null, 2)}
+
+Generate intelligent insights and recommendations for this data visualization.`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+      max_tokens: 1500,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) return null;
+
+    // Parse the JSON response
+    const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanedResponse);
+
+  } catch (error) {
+    console.error('LLM insights generation error:', error);
+    return null;
+  }
+}
+
 export async function GET() {
   return NextResponse.json({
     message: 'VizFin API - Upload data files to create visualizations',
     supportedFormats: ['CSV', 'JSON'],
-    chartTypes: ['bar', 'line', 'area', 'pie', 'scatter']
+    chartTypes: ['bar', 'line', 'area', 'pie', 'scatter'],
+    features: ['AI-powered insights', 'Smart chart recommendations', 'Auto-generated titles', 'Data storytelling']
   });
 } 

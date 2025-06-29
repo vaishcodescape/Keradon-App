@@ -21,6 +21,7 @@ interface ProjectForm {
   category: string;
   isPublic: boolean;
   tags: string[];
+  selectedTools: string[];
 }
 
 const projectCategories = [
@@ -35,12 +36,14 @@ export default function NewProjects() {
   const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
   const [formData, setFormData] = useState<ProjectForm>({
     name: "",
     description: "",
     category: "",
     isPublic: false,
-    tags: []
+    tags: [],
+    selectedTools: []
   });
   const [newTag, setNewTag] = useState("");
   const router = useRouter();
@@ -80,15 +83,40 @@ export default function NewProjects() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Here you would typically send the data to your API
-    console.log("Project data:", formData);
-    
-    setIsLoading(false);
-    router.push("/projects");
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          is_public: formData.isPublic,
+          tags: formData.tags,
+          selected_tools: formData.selectedTools
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        router.push(`/projects/${result.project.id}`);
+      } else {
+        const errorMsg = result.error || 'Failed to create project';
+        setError(errorMsg);
+        console.error('Failed to create project:', errorMsg);
+      }
+    } catch (error) {
+      const errorMsg = 'Network error - please check your connection and try again';
+      setError(errorMsg);
+      console.error('Error creating project:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -146,7 +174,7 @@ export default function NewProjects() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isLoading || !formData.name.trim()}
+              disabled={isLoading || !formData.name.trim() || formData.selectedTools.length === 0}
               className="gap-2"
             >
               {isLoading ? (
@@ -163,6 +191,31 @@ export default function NewProjects() {
             </Button>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <Card className={cn(
+            "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+            "transition-all duration-500 ease-out",
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          )} style={{ transitionDelay: '150ms' }}>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
+                <X className="h-5 w-5" />
+                <span className="font-medium">Error creating project</span>
+              </div>
+              <p className="text-red-600 dark:text-red-400 mt-1 text-sm">{error}</p>
+              {error.includes("category") && (
+                <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-md">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    <strong>Database Schema Issue:</strong> It looks like your database is missing required columns. 
+                    Please run the database schema fix in your Supabase dashboard or contact support.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information */}
@@ -287,13 +340,26 @@ export default function NewProjects() {
             <CardHeader>
               <CardTitle className="text-xl text-foreground">Available Tools</CardTitle>
               <CardDescription>
-                Select the tools you want to use for this project
+                Select the tools you want to use for this project (at least one required)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
-                {/* Tool Card 1 */}
-                <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border-2 hover:border-primary/50">
+                {/* DataShark Tool */}
+                <Card 
+                  className={cn(
+                    "cursor-pointer hover:shadow-md transition-all duration-200 border-2",
+                    formData.selectedTools.includes('datashark') 
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                      : "hover:border-primary/50"
+                  )}
+                  onClick={() => {
+                    const tools = formData.selectedTools.includes('datashark')
+                      ? formData.selectedTools.filter(t => t !== 'datashark')
+                      : [...formData.selectedTools, 'datashark'];
+                    handleInputChange('selectedTools', tools);
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
@@ -305,12 +371,32 @@ export default function NewProjects() {
                         <h3 className="font-semibold text-foreground">DataShark</h3>
                         <p className="text-sm text-muted-foreground">Smart Web Scraper</p>
                       </div>
+                      {formData.selectedTools.includes('datashark') && (
+                        <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Tool Card 2 */}
-                <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border-2 hover:border-primary/50">
+                {/* QueryHammerhead Tool */}
+                <Card 
+                  className={cn(
+                    "cursor-pointer hover:shadow-md transition-all duration-200 border-2",
+                    formData.selectedTools.includes('queryhammerhead') 
+                      ? "border-green-500 bg-green-50 dark:bg-green-900/20" 
+                      : "hover:border-primary/50"
+                  )}
+                  onClick={() => {
+                    const tools = formData.selectedTools.includes('queryhammerhead')
+                      ? formData.selectedTools.filter(t => t !== 'queryhammerhead')
+                      : [...formData.selectedTools, 'queryhammerhead'];
+                    handleInputChange('selectedTools', tools);
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
@@ -322,12 +408,32 @@ export default function NewProjects() {
                         <h3 className="font-semibold text-foreground">QueryHammerhead</h3>
                         <p className="text-sm text-muted-foreground">LLM-powered Data Q&A</p>
                       </div>
+                      {formData.selectedTools.includes('queryhammerhead') && (
+                        <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Tool Card 3 */}
-                <Card className="cursor-pointer hover:shadow-md transition-all duration-200 border-2 hover:border-primary/50">
+                {/* VizFin Tool */}
+                <Card 
+                  className={cn(
+                    "cursor-pointer hover:shadow-md transition-all duration-200 border-2",
+                    formData.selectedTools.includes('vizfin') 
+                      ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" 
+                      : "hover:border-primary/50"
+                  )}
+                  onClick={() => {
+                    const tools = formData.selectedTools.includes('vizfin')
+                      ? formData.selectedTools.filter(t => t !== 'vizfin')
+                      : [...formData.selectedTools, 'vizfin'];
+                    handleInputChange('selectedTools', tools);
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
@@ -339,10 +445,32 @@ export default function NewProjects() {
                         <h3 className="font-semibold text-foreground">VizFin</h3>
                         <p className="text-sm text-muted-foreground">Data Visualizer</p>
                       </div>
+                      {formData.selectedTools.includes('vizfin') && (
+                        <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </div>
+              
+              {formData.selectedTools.length > 0 && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Selected tools: {formData.selectedTools.map(tool => {
+                      switch(tool) {
+                        case 'datashark': return 'DataShark';
+                        case 'queryhammerhead': return 'QueryHammerhead';
+                        case 'vizfin': return 'VizFin';
+                        default: return tool;
+                      }
+                    }).join(', ')}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </form>
