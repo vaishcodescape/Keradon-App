@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUpload } from '@/components/ui/file-upload';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LineChart, PieChart, Download, AlertCircle, TrendingUp, Database, FileText } from 'lucide-react';
+import { BarChart3, LineChart, PieChart, Download, AlertCircle, TrendingUp, Database, FileText, Sparkles, MessageSquare, Lightbulb, Target, Zap } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -45,6 +46,9 @@ export function VizFinInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<VizFinData | null>(null);
   const [error, setError] = useState<string>('');
+  const [nlQuery, setNlQuery] = useState<string>('');
+  const [nlResponse, setNlResponse] = useState<string>('');
+  const [isNlLoading, setIsNlLoading] = useState(false);
 
   const handleFileUpload = (files: File[]) => {
     setUploadedFiles(files);
@@ -87,6 +91,19 @@ export function VizFinInterface() {
       }
 
       setResults(data);
+      
+      // Auto-populate axis fields if they were auto-detected
+      if (data.metadata?.xAxis && !xAxis) {
+        setXAxis(data.metadata.xAxis);
+      }
+      if (data.metadata?.yAxis && !yAxis) {
+        setYAxis(data.metadata.yAxis);
+      }
+      
+      // Update chart type if LLM recommends a different one
+      if (data.metadata?.recommendedChartType && data.metadata.recommendedChartType !== chartType) {
+        setChartType(data.metadata.recommendedChartType);
+      }
     } catch (err) {
       console.error('Error generating chart:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate chart');
@@ -100,6 +117,25 @@ export function VizFinInterface() {
 
     const { data, metadata } = results;
     const { chartType: type, xAxis: xCol, yAxis: yCol } = metadata;
+
+    // Validate data and axes
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          <AlertCircle className="w-6 h-6 mr-2" />
+          No data available for chart
+        </div>
+      );
+    }
+
+    if (!xCol || !yCol) {
+      return (
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          <AlertCircle className="w-6 h-6 mr-2" />
+          Missing axis configuration
+        </div>
+      );
+    }
 
     const chartProps = {
       data,
@@ -137,10 +173,10 @@ export function VizFinInterface() {
 
       case 'pie':
         const pieData = data.slice(0, 10).map((item, index) => ({
-          name: item[xCol],
-          value: item[yCol],
+          name: item[xCol] || `Item ${index + 1}`,
+          value: parseFloat(item[yCol]) || 0,
           fill: CHART_COLORS[index % CHART_COLORS.length]
-        }));
+        })).filter(item => item.value > 0);
         
         return (
           <ResponsiveContainer width="100%" height={400}>
@@ -195,16 +231,52 @@ export function VizFinInterface() {
     URL.revokeObjectURL(url);
   };
 
+  const handleNaturalLanguageQuery = async () => {
+    if (!nlQuery.trim() || !results) return;
+
+    setIsNlLoading(true);
+    setNlResponse('');
+
+    try {
+      const response = await fetch('/api/tools/vizfin/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: nlQuery,
+          chartData: results.data,
+          metadata: results.metadata
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setNlResponse(data.response);
+      } else {
+        setNlResponse(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      setNlResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsNlLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Info Header */}
-      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+      <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
         <div className="flex items-center space-x-2 mb-2">
-          <BarChart3 className="h-4 w-4 text-orange-600" />
-          <span className="font-medium text-orange-800 dark:text-orange-400">VizFin</span>
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="h-4 w-4 text-orange-600" />
+            <Sparkles className="h-4 w-4 text-amber-500" />
+          </div>
+          <span className="font-medium text-orange-800 dark:text-orange-400">VizFin AI</span>
+          <Badge variant="secondary" className="text-xs">AI-Powered</Badge>
         </div>
         <p className="text-sm text-orange-700 dark:text-orange-300">
-          Transform your data into beautiful, interactive visualizations. Upload CSV or JSON files and create charts instantly.
+          Transform your data into beautiful, interactive visualizations with AI-powered insights. Upload CSV or JSON files and get intelligent chart recommendations, auto-generated insights, and natural language querying.
         </p>
       </div>
 
@@ -289,7 +361,7 @@ export function VizFinInterface() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">X-Axis Column</label>
+              <label className="text-sm font-medium">X-Axis Column <span className="text-xs text-muted-foreground">(optional - auto-detected)</span></label>
               <Input 
                 placeholder="e.g., date, category, name" 
                 value={xAxis}
@@ -297,7 +369,7 @@ export function VizFinInterface() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Y-Axis Column</label>
+              <label className="text-sm font-medium">Y-Axis Column <span className="text-xs text-muted-foreground">(optional - auto-detected)</span></label>
               <Input 
                 placeholder="e.g., value, count, amount" 
                 value={yAxis}
@@ -305,6 +377,40 @@ export function VizFinInterface() {
               />
             </div>
           </div>
+
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+            <p><strong>Tip:</strong> You can leave X-Axis and Y-Axis empty - VizFin will automatically detect the best columns for your chart based on your data types.</p>
+          </div>
+
+          {/* AI Chart Recommendation */}
+          {results && results.insights.llmInsights?.recommendedChartType && 
+           results.insights.llmInsights.recommendedChartType !== chartType && (
+            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-800 dark:text-purple-400">
+                    AI Recommendation: 
+                  </span>
+                  <Badge variant="outline" className="text-purple-700 border-purple-300">
+                    {results.insights.llmInsights.recommendedChartType.charAt(0).toUpperCase() + 
+                     results.insights.llmInsights.recommendedChartType.slice(1)} Chart
+                  </Badge>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setChartType(results.insights.llmInsights.recommendedChartType)}
+                  className="text-purple-700 border-purple-300 hover:bg-purple-100"
+                >
+                  Apply
+                </Button>
+              </div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                Based on your data structure, a {results.insights.llmInsights.recommendedChartType} chart might work better.
+              </p>
+            </div>
+          )}
 
           {results && (
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -369,12 +475,139 @@ export function VizFinInterface() {
             </CardContent>
           </Card>
 
-          {/* Data Insights */}
+          {/* AI-Powered Insights */}
+          {results.insights.llmInsights && (
+            <Card className="border-purple-200 dark:border-purple-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  AI Insights
+                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Powered by LLM</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Key Insights */}
+                <div>
+                  <h4 className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <Lightbulb className="w-4 h-4 text-amber-500" />
+                    Key Insights
+                  </h4>
+                  <ul className="space-y-1">
+                    {results.insights.llmInsights.keyInsights?.map((insight: string, index: number) => (
+                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-green-500 mt-1">•</span>
+                        {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Data Story */}
+                {results.insights.llmInsights.dataStory && (
+                  <div>
+                    <h4 className="flex items-center gap-2 text-sm font-medium mb-2">
+                      <MessageSquare className="w-4 h-4 text-blue-500" />
+                      Data Story
+                    </h4>
+                    <p className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      {results.insights.llmInsights.dataStory}
+                    </p>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {results.insights.llmInsights.recommendations && (
+                  <div>
+                    <h4 className="flex items-center gap-2 text-sm font-medium mb-2">
+                      <Target className="w-4 h-4 text-green-500" />
+                      Recommendations
+                    </h4>
+                    <ul className="space-y-1">
+                      {results.insights.llmInsights.recommendations.map((rec: string, index: number) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-blue-500 mt-1">→</span>
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Business Implications */}
+                {results.insights.llmInsights.businessImplications && (
+                  <div>
+                    <h4 className="flex items-center gap-2 text-sm font-medium mb-2">
+                      <Zap className="w-4 h-4 text-orange-500" />
+                      Business Impact
+                    </h4>
+                    <ul className="space-y-1">
+                      {results.insights.llmInsights.businessImplications.map((impl: string, index: number) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-orange-500 mt-1">⚡</span>
+                          {impl}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Natural Language Query */}
+          <Card className="border-blue-200 dark:border-blue-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
+                Ask Questions About Your Data
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Natural Language</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Ask questions about your data... e.g., 'What are the main trends?', 'Which category has the highest values?', 'Are there any outliers?'"
+                  value={nlQuery}
+                  onChange={(e) => setNlQuery(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+                <Button 
+                  onClick={handleNaturalLanguageQuery}
+                  disabled={isNlLoading || !nlQuery.trim() || !results}
+                  className="w-full"
+                >
+                  {isNlLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Ask AI About Data
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {nlResponse && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <h5 className="font-medium text-blue-800 dark:text-blue-400 mb-2">AI Response:</h5>
+                  <div className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap">
+                    {nlResponse}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Traditional Data Insights */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
-                Data Insights
+                Technical Data Analysis
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -398,7 +631,7 @@ export function VizFinInterface() {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Recommendations</p>
+                  <p className="text-sm font-medium text-muted-foreground">Chart Compatibility</p>
                   <div className="space-y-1 text-sm">
                     {results.insights.numericColumns.length > 0 && (
                       <p>✓ Good for numeric charts</p>

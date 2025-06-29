@@ -82,4 +82,51 @@ export class UserService {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }
+
+  static async signInWithOAuth(oauthData: {
+    email: string;
+    name: string;
+    provider: string;
+    providerId: string;
+    image?: string | null;
+  }) {
+    try {
+      // First, try to find existing user by email
+      const { data: existingUser, error: findError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', oauthData.email)
+        .single();
+
+      if (existingUser && !findError) {
+        // User exists, return them
+        return { user: existingUser };
+      }
+
+      // User doesn't exist, create new user record
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          email: oauthData.email,
+          name: oauthData.name,
+          provider: oauthData.provider,
+          provider_id: oauthData.providerId,
+          avatar_url: oauthData.image,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Error creating OAuth user:", createError);
+        throw createError;
+      }
+
+      return { user: newUser };
+    } catch (error) {
+      console.error("OAuth sign in error:", error);
+      throw error;
+    }
+  }
 } 

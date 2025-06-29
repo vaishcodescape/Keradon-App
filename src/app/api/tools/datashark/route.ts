@@ -1,5 +1,160 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import Groq from 'groq-sdk';
+
+// Initialize Groq client for AI-enhanced scraping
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+// AI-Enhanced Content Analysis Function
+async function generateAIInsights(extractedData: any, allText: string): Promise<any> {
+  if (!process.env.GROQ_API_KEY) {
+    return null;
+  }
+
+  try {
+    // Prepare content summary for AI analysis
+    const contentSummary = {
+      title: extractedData.page.title,
+      domain: extractedData.page.domain,
+      contentType: extractedData.insights.contentType,
+      businessType: extractedData.insights.businessType,
+      wordCount: allText.split(' ').length,
+      hasContactInfo: extractedData.contact.hasContactInfo,
+      hasPricing: extractedData.business.commercialIndicators.hasPricing,
+      technicalComplexity: extractedData.insights.technicalComplexity,
+      seoScore: extractedData.seoHealth?.overallScore || 0,
+      headings: {
+        h1: extractedData.seo.headings.h1.slice(0, 3),
+        h2: extractedData.seo.headings.h2.slice(0, 5)
+      },
+      keyPatterns: {
+        hasFinancialData: extractedData.insights.patterns.hasFinancialData,
+        hasSocialElements: extractedData.insights.patterns.hasSocialElements,
+        hasLocationData: extractedData.insights.patterns.hasLocationData
+      }
+    };
+
+    const systemPrompt = `You are DataShark AI, an expert web content analyzer and business intelligence specialist. Analyze the provided website data and generate intelligent insights.
+
+Your response must be a valid JSON object with this exact structure:
+{
+  "businessInsights": {
+    "industry": "string",
+    "businessModel": "string", 
+    "targetAudience": "string",
+    "competitiveAdvantages": ["advantage1", "advantage2"],
+    "marketPosition": "string"
+  },
+  "contentAnalysis": {
+    "contentQuality": "high|medium|low",
+    "mainTopics": ["topic1", "topic2", "topic3"],
+    "contentGaps": ["gap1", "gap2"],
+    "improvementSuggestions": ["suggestion1", "suggestion2"]
+  },
+  "technicalInsights": {
+    "performanceIndicators": ["indicator1", "indicator2"],
+    "securityAssessment": "secure|moderate|concerning",
+    "mobileReadiness": "excellent|good|poor",
+    "recommendations": ["rec1", "rec2"]
+  },
+  "dataExtractionSummary": {
+    "dataRichness": "high|medium|low",
+    "structuredDataQuality": "excellent|good|poor",
+    "extractionDifficulty": "easy|moderate|complex",
+    "bestDataSources": ["source1", "source2"]
+  },
+  "actionableInsights": {
+    "businessOpportunities": ["opportunity1", "opportunity2"],
+    "dataUtilization": ["use1", "use2"],
+    "monitoringRecommendations": ["monitor1", "monitor2"]
+  }
+}
+
+Focus on providing practical, actionable insights that would help with business intelligence, competitive analysis, and data utilization.`;
+
+    const userPrompt = `Analyze this website data:
+
+Website: ${contentSummary.title} (${contentSummary.domain})
+Content Type: ${contentSummary.contentType}
+Business Type: ${contentSummary.businessType}
+Word Count: ${contentSummary.wordCount}
+SEO Score: ${contentSummary.seoScore}/100
+Technical Complexity: ${contentSummary.technicalComplexity}
+
+Key Information:
+- Has Contact Info: ${contentSummary.hasContactInfo}
+- Has Pricing: ${contentSummary.hasPricing}
+- Has Financial Data: ${contentSummary.keyPatterns.hasFinancialData}
+- Has Social Elements: ${contentSummary.keyPatterns.hasSocialElements}
+- Has Location Data: ${contentSummary.keyPatterns.hasLocationData}
+
+Main Headings:
+H1: ${contentSummary.headings.h1.join(', ')}
+H2: ${contentSummary.headings.h2.join(', ')}
+
+Generate comprehensive AI insights for this website data.`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+      max_tokens: 2000,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) return null;
+
+    // Parse the JSON response
+    const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanedResponse);
+
+  } catch (error) {
+    console.error('AI insights generation error:', error);
+    return null;
+  }
+}
+
+// Enhanced Data Extraction with AI
+async function enhanceDataWithAI(extractedData: any, allText: string): Promise<any> {
+  if (!process.env.GROQ_API_KEY) {
+    return extractedData;
+  }
+
+  try {
+    // Generate AI insights
+    const aiInsights = await generateAIInsights(extractedData, allText);
+    
+    // Enhance the extracted data with AI insights
+    if (aiInsights) {
+      extractedData.aiInsights = {
+        ...aiInsights,
+        generatedAt: new Date().toISOString(),
+        model: 'llama-3.3-70b-versatile',
+        confidence: 'high'
+      };
+
+      // Update summary with AI-enhanced metrics
+      extractedData.summary = {
+        ...extractedData.summary,
+        aiEnhanced: true,
+        businessIntelligence: aiInsights.businessInsights?.industry || 'Unknown',
+        contentQualityAI: aiInsights.contentAnalysis?.contentQuality || 'unknown',
+        dataUtilizationScore: aiInsights.dataExtractionSummary?.dataRichness === 'high' ? 90 : 
+                             aiInsights.dataExtractionSummary?.dataRichness === 'medium' ? 70 : 50
+      };
+    }
+
+    return extractedData;
+  } catch (error) {
+    console.error('AI enhancement error:', error);
+    return extractedData;
+  }
+}
 
 interface ScrapeRequest {
   url: string;
@@ -2063,14 +2218,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 🤖 AI-Enhanced Analysis
+    let enhancedData = extractedData;
+    try {
+      enhancedData = await enhanceDataWithAI(extractedData, allText);
+    } catch (error) {
+      console.warn('AI enhancement failed, using standard extraction:', error);
+    }
+
     const elementsFound = 
-      extractedData.seo.headings.h1.length + 
-      extractedData.seo.headings.h2.length + 
-      extractedData.seo.headings.h3.length + 
-      extractedData.content.paragraphs.count + 
-      extractedData.links.all.length + 
-      extractedData.media.images.count +
-      extractedData.contact.phones.length +
+      enhancedData.seo.headings.h1.length + 
+      enhancedData.seo.headings.h2.length + 
+      enhancedData.seo.headings.h3.length + 
+      enhancedData.content.paragraphs.count + 
+      enhancedData.links.all.length + 
+      enhancedData.media.images.count +
+      enhancedData.contact.phones.length +
       extractedData.contact.emails.length +
       extractedData.business.services.length +
       extractedData.business.products.length +
@@ -2088,24 +2251,26 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
       format,
       elementsFound,
-      scraperUsed: usedBasicMode ? 'ScraperAPI (Basic)' : 'ScraperAPI (Enhanced)'
+      scraperUsed: usedBasicMode ? 'ScraperAPI (Basic)' : 'ScraperAPI (Enhanced)',
+      aiEnhanced: enhancedData.aiInsights ? true : false,
+      aiModel: enhancedData.aiInsights?.model || null
     };
 
     // Format the output based on requested format
     let formattedData;
     switch (format) {
       case 'text':
-        formattedData = formatAsText(extractedData);
+        formattedData = formatAsText(enhancedData);
         break;
       case 'csv':
-        formattedData = formatAsCSV(extractedData);
+        formattedData = formatAsCSV(enhancedData);
         break;
       case 'xml':
-        formattedData = formatAsXML(extractedData);
+        formattedData = formatAsXML(enhancedData);
         break;
       case 'json':
       default:
-        formattedData = extractedData;
+        formattedData = enhancedData;
         break;
     }
 
@@ -2292,7 +2457,7 @@ function formatAsText(data: any): string {
     // Page Information Header
     text += '╔' + '═'.repeat(78) + '╗\n';
     text += '║' + padRight('', 78) + '║\n';
-    text += '║' + padRight('                     WEBSITE ANALYSIS REPORT', 78) + '║\n';
+    text += '║' + padRight('                 AI-ENHANCED WEBSITE ANALYSIS', 78) + '║\n';
     text += '║' + padRight('', 78) + '║\n';
     text += '╚' + '═'.repeat(78) + '╝\n\n';
     
@@ -2315,6 +2480,71 @@ function formatAsText(data: any): string {
     }
     text += '└' + '─'.repeat(78) + '\n\n';
     
+    // AI Insights Section
+    if (data.aiInsights) {
+      text += '┌─ 🤖 AI BUSINESS INTELLIGENCE ' + '─'.repeat(47) + '\n';
+      text += '│\n';
+      
+      if (data.aiInsights.businessIntelligence) {
+        const bi = data.aiInsights.businessIntelligence;
+        text += '│ ┌─ Business Analysis ─────────────────────────────────────┐\n';
+        if (bi.industry) text += '│ │ Industry: ' + bi.industry + '\n';
+        if (bi.businessModel) text += '│ │ Business Model: ' + bi.businessModel + '\n';
+        if (bi.targetAudience) text += '│ │ Target Audience: ' + bi.targetAudience + '\n';
+        if (bi.competitiveAdvantages?.length > 0) {
+          text += '│ │ Competitive Advantages:\n';
+          bi.competitiveAdvantages.forEach((adv: string) => {
+            text += '│ │   • ' + adv + '\n';
+          });
+        }
+        text += '│ └────────────────────────────────────────────────────────┘\n';
+        text += '│\n';
+      }
+      
+      if (data.aiInsights.contentAnalysis) {
+        const ca = data.aiInsights.contentAnalysis;
+        text += '│ ┌─ Content Analysis ──────────────────────────────────────┐\n';
+        if (ca.qualityScore) text += '│ │ Quality Score: ' + ca.qualityScore + '/10\n';
+        if (ca.primaryTopics?.length > 0) {
+          text += '│ │ Primary Topics: ' + ca.primaryTopics.join(', ') + '\n';
+        }
+        if (ca.contentGaps?.length > 0) {
+          text += '│ │ Content Gaps:\n';
+          ca.contentGaps.forEach((gap: string) => {
+            text += '│ │   • ' + gap + '\n';
+          });
+        }
+        text += '│ └────────────────────────────────────────────────────────┘\n';
+        text += '│\n';
+      }
+      
+      if (data.aiInsights.technicalInsights) {
+        const ti = data.aiInsights.technicalInsights;
+        text += '│ ┌─ Technical Assessment ──────────────────────────────────┐\n';
+        if (ti.performanceIndicators?.length > 0) {
+          text += '│ │ Performance Indicators:\n';
+          ti.performanceIndicators.forEach((indicator: string) => {
+            text += '│ │   • ' + indicator + '\n';
+          });
+        }
+        if (ti.securityAssessment) text += '│ │ Security: ' + ti.securityAssessment + '\n';
+        if (ti.mobileReadiness) text += '│ │ Mobile Ready: ' + ti.mobileReadiness + '\n';
+        text += '│ └────────────────────────────────────────────────────────┘\n';
+        text += '│\n';
+      }
+      
+      if (data.aiInsights.actionableInsights?.businessOpportunities?.length > 0) {
+        text += '│ ┌─ Business Opportunities ────────────────────────────────┐\n';
+        data.aiInsights.actionableInsights.businessOpportunities.forEach((opp: string) => {
+          text += '│ │ • ' + opp + '\n';
+        });
+        text += '│ └────────────────────────────────────────────────────────┘\n';
+        text += '│\n';
+      }
+      
+      text += '└' + '─'.repeat(78) + '\n\n';
+    }
+    
     // Summary Statistics Section
     if (data.summary) {
       text += '┌─ 📊 SUMMARY STATISTICS ' + '─'.repeat(53) + '\n';
@@ -2325,29 +2555,6 @@ function formatAsText(data: any): string {
       text += '│ │ Data Quality Score        │ ' + padLeft(`${data.summary.dataQuality}/100`, 25) + ' │\n';
       text += '│ │ Scraping Difficulty       │ ' + padLeft(data.summary.scrapingDifficulty, 25) + ' │\n';
       text += '│ └───────────────────────────┴───────────────────────────┘\n';
-      text += '│\n';
-      text += '└' + '─'.repeat(78) + '\n\n';
-    }
-    
-    // Content Analysis Section
-    if (data.insights) {
-      text += '┌─ 🔍 CONTENT ANALYSIS ' + '─'.repeat(55) + '\n';
-      text += '│\n';
-      text += '│ Content Type         : ' + data.insights.contentType + '\n';
-      text += '│ Business Type        : ' + data.insights.businessType + '\n';
-      text += '│ Technical Complexity : ' + data.insights.technicalComplexity + '\n';
-      if (data.content?.readabilityScore !== undefined) {
-        text += '│ Readability Score    : ' + data.content.readabilityScore + '/100\n';
-      }
-      if (data.content?.paragraphs) {
-        text += '│\n';
-        text += '│ ┌─ Content Metrics ──────────────────────────────────────┐\n';
-        text += '│ │ Total Paragraphs    : ' + padLeft(data.content.paragraphs.count.toString(), 31) + ' │\n';
-        text += '│ │ Total Words         : ' + padLeft(data.content.paragraphs.totalWords.toString(), 31) + ' │\n';
-        text += '│ │ Avg Paragraph Length: ' + padLeft(`${data.content.paragraphs.averageLength} chars`, 31) + ' │\n';
-        text += '│ │ Content Density     : ' + padLeft(data.content.contentDensity, 31) + ' │\n';
-        text += '│ └────────────────────────────────────────────────────────┘\n';
-      }
       text += '│\n';
       text += '└' + '─'.repeat(78) + '\n\n';
     }
@@ -2364,6 +2571,10 @@ function formatAsText(data: any): string {
       }
       if (data.seo.meta.keywords) {
         text += '│ Keywords: ' + data.seo.meta.keywords + '\n';
+        text += '│\n';
+      }
+      if (data.seo.healthScore) {
+        text += '│ SEO Health Score: ' + data.seo.healthScore.overall + '/100\n';
         text += '│\n';
       }
       text += '└' + '─'.repeat(78) + '\n\n';
@@ -2644,95 +2855,185 @@ function formatAsText(data: any): string {
 function formatAsCSV(data: any): string {
   try {
     const rows = [];
-    rows.push('Type,Category,Content,URL,Additional');
+    rows.push('Type,Category,Content,URL,Additional,Score');
     
-    if (data.title) {
-      rows.push(`Title,Meta,"${data.title}","",""`);
+    // Basic Information
+    if (data.page?.title) {
+      rows.push(`Page,Title,"${data.page.title.replace(/"/g, '""')}","${data.page?.url || ''}","",""`);
     }
-    
-    // Safely add headings
-    if (data.headings?.h1) {
-      data.headings.h1.forEach((h: string) => rows.push(`Heading,H1,"${h}","",""`));
-    }
-    if (data.headings?.h2) {
-      data.headings.h2.forEach((h: string) => rows.push(`Heading,H2,"${h}","",""`));
-    }
-    if (data.headings?.h3) {
-      data.headings.h3.forEach((h: string) => rows.push(`Heading,H3,"${h}","",""`));
+    if (data.page?.domain) {
+      rows.push(`Page,Domain,"${data.page.domain}","","",""`);
     }
     
-    // Safely add paragraphs
-    if (data.paragraphs) {
-      data.paragraphs.forEach((p: string) => rows.push(`Content,Paragraph,"${p.replace(/"/g, '""')}","",""`));
+    // AI Insights
+    if (data.aiInsights) {
+      if (data.aiInsights.businessIntelligence) {
+        const bi = data.aiInsights.businessIntelligence;
+        if (bi.industry) rows.push(`AI,Industry,"${bi.industry.replace(/"/g, '""')}","","",""`);
+        if (bi.businessModel) rows.push(`AI,BusinessModel,"${bi.businessModel.replace(/"/g, '""')}","","",""`);
+        if (bi.targetAudience) rows.push(`AI,TargetAudience,"${bi.targetAudience.replace(/"/g, '""')}","","",""`);
+        if (bi.competitiveAdvantages?.length > 0) {
+          bi.competitiveAdvantages.forEach((adv: string) => 
+            rows.push(`AI,CompetitiveAdvantage,"${adv.replace(/"/g, '""')}","","",""`));
+        }
+      }
+      
+      if (data.aiInsights.contentAnalysis) {
+        const ca = data.aiInsights.contentAnalysis;
+        if (ca.qualityScore) rows.push(`AI,ContentQuality,"Quality Assessment","","","${ca.qualityScore}/10"`);
+        if (ca.primaryTopics?.length > 0) {
+          ca.primaryTopics.forEach((topic: string) => 
+            rows.push(`AI,PrimaryTopic,"${topic.replace(/"/g, '""')}","","",""`));
+        }
+        if (ca.contentGaps?.length > 0) {
+          ca.contentGaps.forEach((gap: string) => 
+            rows.push(`AI,ContentGap,"${gap.replace(/"/g, '""')}","","",""`));
+        }
+      }
+      
+      if (data.aiInsights.technicalInsights) {
+        const ti = data.aiInsights.technicalInsights;
+        if (ti.performanceIndicators?.length > 0) {
+          ti.performanceIndicators.forEach((indicator: string) => 
+            rows.push(`AI,PerformanceIndicator,"${indicator.replace(/"/g, '""')}","","",""`));
+        }
+        if (ti.securityAssessment) rows.push(`AI,Security,"${ti.securityAssessment.replace(/"/g, '""')}","","",""`);
+        if (ti.mobileReadiness) rows.push(`AI,MobileReadiness,"${ti.mobileReadiness.replace(/"/g, '""')}","","",""`);
+      }
+      
+      if (data.aiInsights.actionableInsights?.businessOpportunities?.length > 0) {
+        data.aiInsights.actionableInsights.businessOpportunities.forEach((opp: string) => 
+          rows.push(`AI,BusinessOpportunity,"${opp.replace(/"/g, '""')}","","",""`));
+      }
     }
-
+    
+    // SEO Information
+    if (data.seo?.meta?.description) {
+      rows.push(`SEO,MetaDescription,"${data.seo.meta.description.replace(/"/g, '""')}","","",""`);
+    }
+    if (data.seo?.meta?.keywords) {
+      rows.push(`SEO,Keywords,"${data.seo.meta.keywords.replace(/"/g, '""')}","","",""`);
+    }
+    if (data.seo?.healthScore) {
+      rows.push(`SEO,HealthScore,"Overall SEO Health","","","${data.seo.healthScore.overall}/100"`);
+    }
+    
+    // Headings
+    if (data.seo?.headings?.h1) {
+      data.seo.headings.h1.forEach((h: string) => rows.push(`Heading,H1,"${h.replace(/"/g, '""')}","","",""`));
+    }
+    if (data.seo?.headings?.h2) {
+      data.seo.headings.h2.forEach((h: string) => rows.push(`Heading,H2,"${h.replace(/"/g, '""')}","","",""`));
+    }
+    if (data.seo?.headings?.h3) {
+      data.seo.headings.h3.forEach((h: string) => rows.push(`Heading,H3,"${h.replace(/"/g, '""')}","","",""`));
+    }
+    
+    // Content
+    if (data.content?.paragraphs?.items) {
+      data.content.paragraphs.items.forEach((p: string, i: number) => 
+        rows.push(`Content,Paragraph,"${p.replace(/"/g, '""').substring(0, 500)}${p.length > 500 ? '...' : ''}","","Paragraph ${i + 1}",""`));
+    }
+    
     // Contact Information
     if (data.contact) {
       if (data.contact.phones) {
-        data.contact.phones.forEach((phone: string) => rows.push(`Contact,Phone,"${phone}","",""`));
+        data.contact.phones.forEach((phone: string) => rows.push(`Contact,Phone,"${phone}","","",""`));
       }
       if (data.contact.emails) {
-        data.contact.emails.forEach((email: string) => rows.push(`Contact,Email,"${email}","",""`));
+        data.contact.emails.forEach((email: string) => rows.push(`Contact,Email,"${email}","","",""`));
       }
       if (data.contact.addresses) {
-        data.contact.addresses.forEach((addr: string) => rows.push(`Contact,Address,"${addr.replace(/"/g, '""')}","",""`));
+        data.contact.addresses.forEach((addr: string) => rows.push(`Contact,Address,"${addr.replace(/"/g, '""')}","","",""`));
+      }
+      if (data.contact.contactScore) {
+        rows.push(`Contact,Score,"Contact Information Quality","","","${data.contact.contactScore}/100"`);
       }
     }
 
-    // Categorized Links
+    // Links
     if (data.links) {
-      if (data.links.social) {
-        data.links.social.forEach((link: any) => 
-          rows.push(`Link,Social,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+      const linkCategories = ['social', 'external', 'internal', 'download', 'email', 'phone'];
+      linkCategories.forEach(category => {
+        if (data.links[category]) {
+          data.links[category].forEach((link: any) => 
+            rows.push(`Link,${category.charAt(0).toUpperCase() + category.slice(1)},"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}","",""`));
+        }
+      });
+    }
+
+    // Business Data
+    if (data.business) {
+      if (data.business.companyName) {
+        rows.push(`Business,CompanyName,"${data.business.companyName.replace(/"/g, '""')}","","",""`);
       }
-      if (data.links.email) {
-        data.links.email.forEach((link: any) => 
-          rows.push(`Link,Email,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+      if (data.business.services?.length > 0) {
+        data.business.services.forEach((service: string) => 
+          rows.push(`Business,Service,"${service.replace(/"/g, '""')}","","",""`));
       }
-      if (data.links.phone) {
-        data.links.phone.forEach((link: any) => 
-          rows.push(`Link,Phone,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+      if (data.business.products?.length > 0) {
+        data.business.products.forEach((product: string) => 
+          rows.push(`Business,Product,"${product.replace(/"/g, '""')}","","",""`));
       }
-      if (data.links.download) {
-        data.links.download.forEach((link: any) => 
-          rows.push(`Link,Download,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+      if (data.business.pricing?.length > 0) {
+        data.business.pricing.forEach((price: any) => 
+          rows.push(`Business,Pricing,"${price.text?.replace(/"/g, '""') || ''}","","${price.context || ''}",""`));
       }
-      if (data.links.external) {
-        data.links.external.forEach((link: any) => 
-          rows.push(`Link,External,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+    }
+
+    // Technical Data
+    if (data.technical) {
+      if (data.technical.technologies?.length > 0) {
+        data.technical.technologies.forEach((tech: string) => 
+          rows.push(`Technical,Technology,"${tech}","","",""`));
       }
-      if (data.links.internal) {
-        data.links.internal.forEach((link: any) => 
-          rows.push(`Link,Internal,"${(link.text || '').replace(/"/g, '""')}","${link.href || ''}",""`));
+      if (data.technical.frameworks?.length > 0) {
+        data.technical.frameworks.forEach((framework: string) => 
+          rows.push(`Technical,Framework,"${framework}","","",""`));
+      }
+      if (data.technical.analytics?.length > 0) {
+        data.technical.analytics.forEach((analytics: string) => 
+          rows.push(`Technical,Analytics,"${analytics}","","",""`));
       }
     }
 
     // Data Patterns
-    if (data.patterns) {
-      if (data.patterns.dates) {
-        data.patterns.dates.forEach((date: string) => rows.push(`Pattern,Date,"${date}","",""`));
+    if (data.insights?.patterns) {
+      const patterns = data.insights.patterns;
+      if (patterns.dates) {
+        patterns.dates.forEach((date: string) => rows.push(`Pattern,Date,"${date}","","",""`));
       }
-      if (data.patterns.times) {
-        data.patterns.times.forEach((time: string) => rows.push(`Pattern,Time,"${time}","",""`));
+      if (patterns.times) {
+        patterns.times.forEach((time: string) => rows.push(`Pattern,Time,"${time}","","",""`));
       }
-      if (data.patterns.currencies) {
-        data.patterns.currencies.forEach((curr: string) => rows.push(`Pattern,Currency,"${curr}","",""`));
+      if (patterns.currencies) {
+        patterns.currencies.forEach((curr: string) => rows.push(`Pattern,Currency,"${curr}","","",""`));
       }
-      if (data.patterns.hashtags) {
-        data.patterns.hashtags.forEach((tag: string) => rows.push(`Pattern,Hashtag,"${tag}","",""`));
+      if (patterns.hashtags) {
+        patterns.hashtags.forEach((tag: string) => rows.push(`Pattern,Hashtag,"${tag}","","",""`));
+      }
+      if (patterns.mentions) {
+        patterns.mentions.forEach((mention: string) => rows.push(`Pattern,Mention,"${mention}","","",""`));
       }
     }
     
-    // Safely add images
-    if (data.images) {
-      data.images.forEach((img: any) => 
-        rows.push(`Media,Image,"","${img.src || ''}","${(img.alt || '').replace(/"/g, '""')}"`));
+    // Media
+    if (data.media?.images && data.media.images.count > 0) {
+      rows.push(`Media,ImageStats,"Total Images: ${data.media.images.count}","","With Alt: ${data.media.images.withAltText}","${data.media.images.accessibilityScore}%"`);
+    }
+    
+    // Summary Statistics
+    if (data.summary) {
+      rows.push(`Summary,TotalElements,"${data.summary.totalElements}","","",""`);
+      rows.push(`Summary,ContentRichness,"${data.summary.contentRichness}","","",""`);
+      rows.push(`Summary,DataQuality,"Data Quality Assessment","","","${data.summary.dataQuality}/100"`);
+      rows.push(`Summary,ScrapingDifficulty,"${data.summary.scrapingDifficulty}","","",""`);
     }
     
     return rows.join('\n');
   } catch (error) {
     console.error('Error formatting CSV:', error);
-    return `Type,Category,Content,URL,Additional\nError,Formatting,"Failed to format CSV: ${error instanceof Error ? error.message : 'Unknown error'}","",""`;
+    return `Type,Category,Content,URL,Additional,Score\nError,Formatting,"Failed to format CSV: ${error instanceof Error ? error.message : 'Unknown error'}","","",""`;
   }
 }
 
@@ -2740,38 +3041,126 @@ function formatAsXML(data: any): string {
   try {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<webpage>\n';
     
-    // Safely add title
-    xml += `  <title><![CDATA[${data.title || ''}]]></title>\n`;
+    // Basic Page Information
+    xml += `  <page>\n`;
+    xml += `    <title><![CDATA[${data.page?.title || ''}]]></title>\n`;
+    xml += `    <url><![CDATA[${data.page?.url || ''}]]></url>\n`;
+    xml += `    <domain><![CDATA[${data.page?.domain || ''}]]></domain>\n`;
+    xml += `    <protocol><![CDATA[${data.page?.protocol || ''}]]></protocol>\n`;
+    xml += `  </page>\n`;
     
-    // Safely add meta information
-    xml += `  <meta>\n`;
-    xml += `    <description><![CDATA[${data.meta?.description || ''}]]></description>\n`;
-    xml += `    <keywords><![CDATA[${data.meta?.keywords || ''}]]></keywords>\n`;
-    xml += `  </meta>\n`;
+    // AI Insights
+    if (data.aiInsights) {
+      xml += `  <aiInsights>\n`;
+      
+      if (data.aiInsights.businessIntelligence) {
+        const bi = data.aiInsights.businessIntelligence;
+        xml += `    <businessIntelligence>\n`;
+        xml += `      <industry><![CDATA[${bi.industry || ''}]]></industry>\n`;
+        xml += `      <businessModel><![CDATA[${bi.businessModel || ''}]]></businessModel>\n`;
+        xml += `      <targetAudience><![CDATA[${bi.targetAudience || ''}]]></targetAudience>\n`;
+        if (bi.competitiveAdvantages?.length > 0) {
+          xml += `      <competitiveAdvantages>\n`;
+          bi.competitiveAdvantages.forEach((adv: string) => 
+            xml += `        <advantage><![CDATA[${adv}]]></advantage>\n`);
+          xml += `      </competitiveAdvantages>\n`;
+        }
+        xml += `    </businessIntelligence>\n`;
+      }
+      
+      if (data.aiInsights.contentAnalysis) {
+        const ca = data.aiInsights.contentAnalysis;
+        xml += `    <contentAnalysis>\n`;
+        xml += `      <qualityScore>${ca.qualityScore || 0}</qualityScore>\n`;
+        if (ca.primaryTopics?.length > 0) {
+          xml += `      <primaryTopics>\n`;
+          ca.primaryTopics.forEach((topic: string) => 
+            xml += `        <topic><![CDATA[${topic}]]></topic>\n`);
+          xml += `      </primaryTopics>\n`;
+        }
+        if (ca.contentGaps?.length > 0) {
+          xml += `      <contentGaps>\n`;
+          ca.contentGaps.forEach((gap: string) => 
+            xml += `        <gap><![CDATA[${gap}]]></gap>\n`);
+          xml += `      </contentGaps>\n`;
+        }
+        xml += `    </contentAnalysis>\n`;
+      }
+      
+      if (data.aiInsights.technicalInsights) {
+        const ti = data.aiInsights.technicalInsights;
+        xml += `    <technicalInsights>\n`;
+        xml += `      <securityAssessment><![CDATA[${ti.securityAssessment || ''}]]></securityAssessment>\n`;
+        xml += `      <mobileReadiness><![CDATA[${ti.mobileReadiness || ''}]]></mobileReadiness>\n`;
+        if (ti.performanceIndicators?.length > 0) {
+          xml += `      <performanceIndicators>\n`;
+          ti.performanceIndicators.forEach((indicator: string) => 
+            xml += `        <indicator><![CDATA[${indicator}]]></indicator>\n`);
+          xml += `      </performanceIndicators>\n`;
+        }
+        xml += `    </technicalInsights>\n`;
+      }
+      
+      if (data.aiInsights.actionableInsights?.businessOpportunities?.length > 0) {
+        xml += `    <actionableInsights>\n`;
+        xml += `      <businessOpportunities>\n`;
+        data.aiInsights.actionableInsights.businessOpportunities.forEach((opp: string) => 
+          xml += `        <opportunity><![CDATA[${opp}]]></opportunity>\n`);
+        xml += `      </businessOpportunities>\n`;
+        xml += `    </actionableInsights>\n`;
+      }
+      
+      xml += `  </aiInsights>\n`;
+    }
     
-    // Safely add headings
-    xml += `  <headings>\n`;
-    if (data.headings?.h1 && Array.isArray(data.headings.h1)) {
-      data.headings.h1.forEach((h: string) => xml += `    <h1><![CDATA[${h}]]></h1>\n`);
+    // SEO Information
+    if (data.seo) {
+      xml += `  <seo>\n`;
+      if (data.seo.meta) {
+        xml += `    <meta>\n`;
+        xml += `      <description><![CDATA[${data.seo.meta.description || ''}]]></description>\n`;
+        xml += `      <keywords><![CDATA[${data.seo.meta.keywords || ''}]]></keywords>\n`;
+        xml += `    </meta>\n`;
+      }
+      
+      if (data.seo.healthScore) {
+        xml += `    <healthScore>\n`;
+        xml += `      <overall>${data.seo.healthScore.overall}</overall>\n`;
+        xml += `    </healthScore>\n`;
+      }
+      
+      if (data.seo.headings) {
+        xml += `    <headings>\n`;
+        if (data.seo.headings.h1 && Array.isArray(data.seo.headings.h1)) {
+          data.seo.headings.h1.forEach((h: string) => xml += `      <h1><![CDATA[${h}]]></h1>\n`);
+        }
+        if (data.seo.headings.h2 && Array.isArray(data.seo.headings.h2)) {
+          data.seo.headings.h2.forEach((h: string) => xml += `      <h2><![CDATA[${h}]]></h2>\n`);
+        }
+        if (data.seo.headings.h3 && Array.isArray(data.seo.headings.h3)) {
+          data.seo.headings.h3.forEach((h: string) => xml += `      <h3><![CDATA[${h}]]></h3>\n`);
+        }
+        xml += `    </headings>\n`;
+      }
+      xml += `  </seo>\n`;
     }
-    if (data.headings?.h2 && Array.isArray(data.headings.h2)) {
-      data.headings.h2.forEach((h: string) => xml += `    <h2><![CDATA[${h}]]></h2>\n`);
-    }
-    if (data.headings?.h3 && Array.isArray(data.headings.h3)) {
-      data.headings.h3.forEach((h: string) => xml += `    <h3><![CDATA[${h}]]></h3>\n`);
-    }
-    xml += `  </headings>\n`;
     
-    // Safely add content
-    xml += `  <content>\n`;
-    if (data.paragraphs && Array.isArray(data.paragraphs)) {
-      data.paragraphs.forEach((p: string) => xml += `    <paragraph><![CDATA[${p}]]></paragraph>\n`);
+    // Content
+    if (data.content?.paragraphs?.items) {
+      xml += `  <content>\n`;
+      xml += `    <paragraphs count="${data.content.paragraphs.count || 0}">\n`;
+      data.content.paragraphs.items.forEach((p: string, i: number) => 
+        xml += `      <paragraph id="${i + 1}"><![CDATA[${p}]]></paragraph>\n`);
+      xml += `    </paragraphs>\n`;
+      if (data.content.readabilityScore) {
+        xml += `    <readabilityScore>${data.content.readabilityScore}</readabilityScore>\n`;
+      }
+      xml += `  </content>\n`;
     }
-    xml += `  </content>\n`;
 
     // Contact Information
     if (data.contact) {
-      xml += `  <contact>\n`;
+      xml += `  <contact score="${data.contact.contactScore || 0}">\n`;
       if (data.contact.phones && Array.isArray(data.contact.phones)) {
         xml += `    <phones>\n`;
         data.contact.phones.forEach((phone: string) => 
@@ -2793,14 +3182,65 @@ function formatAsXML(data: any): string {
       xml += `  </contact>\n`;
     }
     
-    // Safely add categorized links
+    // Business Information
+    if (data.business) {
+      xml += `  <business>\n`;
+      if (data.business.companyName) {
+        xml += `    <companyName><![CDATA[${data.business.companyName}]]></companyName>\n`;
+      }
+      if (data.business.services?.length > 0) {
+        xml += `    <services>\n`;
+        data.business.services.forEach((service: string) => 
+          xml += `      <service><![CDATA[${service}]]></service>\n`);
+        xml += `    </services>\n`;
+      }
+      if (data.business.products?.length > 0) {
+        xml += `    <products>\n`;
+        data.business.products.forEach((product: string) => 
+          xml += `      <product><![CDATA[${product}]]></product>\n`);
+        xml += `    </products>\n`;
+      }
+      if (data.business.pricing?.length > 0) {
+        xml += `    <pricing>\n`;
+        data.business.pricing.forEach((price: any) => 
+          xml += `      <price context="${price.context || ''}"><![CDATA[${price.text || ''}]]></price>\n`);
+        xml += `    </pricing>\n`;
+      }
+      xml += `  </business>\n`;
+    }
+    
+    // Technical Information
+    if (data.technical) {
+      xml += `  <technical>\n`;
+      if (data.technical.technologies?.length > 0) {
+        xml += `    <technologies>\n`;
+        data.technical.technologies.forEach((tech: string) => 
+          xml += `      <technology><![CDATA[${tech}]]></technology>\n`);
+        xml += `    </technologies>\n`;
+      }
+      if (data.technical.frameworks?.length > 0) {
+        xml += `    <frameworks>\n`;
+        data.technical.frameworks.forEach((framework: string) => 
+          xml += `      <framework><![CDATA[${framework}]]></framework>\n`);
+        xml += `    </frameworks>\n`;
+      }
+      if (data.technical.analytics?.length > 0) {
+        xml += `    <analytics>\n`;
+        data.technical.analytics.forEach((analytics: string) => 
+          xml += `      <service><![CDATA[${analytics}]]></service>\n`);
+        xml += `    </analytics>\n`;
+      }
+      xml += `  </technical>\n`;
+    }
+    
+    // Links
     xml += `  <links>\n`;
     if (data.links && typeof data.links === 'object') {
       Object.entries(data.links).forEach(([category, links]: [string, any]) => {
-        if (Array.isArray(links) && links.length > 0 && category !== 'all') {
+        if (Array.isArray(links) && links.length > 0 && category !== 'all' && category !== 'analytics') {
           xml += `    <${category}>\n`;
           links.forEach((link: any) => 
-            xml += `      <link href="${link.href}"><![CDATA[${link.text || ''}]]></link>\n`);
+            xml += `      <link href="${link.href || ''}"><![CDATA[${link.text || ''}]]></link>\n`);
           xml += `    </${category}>\n`;
         }
       });
@@ -2808,9 +3248,9 @@ function formatAsXML(data: any): string {
     xml += `  </links>\n`;
 
     // Data Patterns
-    if (data.patterns) {
+    if (data.insights?.patterns) {
       xml += `  <patterns>\n`;
-      Object.entries(data.patterns).forEach(([category, items]: [string, any]) => {
+      Object.entries(data.insights.patterns).forEach(([category, items]: [string, any]) => {
         if (Array.isArray(items) && items.length > 0) {
           xml += `    <${category}>\n`;
           items.forEach((item: string) => 
@@ -2821,13 +3261,22 @@ function formatAsXML(data: any): string {
       xml += `  </patterns>\n`;
     }
     
-    // Safely add images
-    xml += `  <images>\n`;
-    if (data.images && Array.isArray(data.images)) {
-      data.images.forEach((img: any) => 
-        xml += `    <image src="${img.src || ''}" alt="${img.alt || ''}"/>\n`);
+    // Media Analysis
+    if (data.media?.images) {
+      xml += `  <media>\n`;
+      xml += `    <images count="${data.media.images.count || 0}" withAltText="${data.media.images.withAltText || 0}" accessibilityScore="${data.media.images.accessibilityScore || 0}"/>\n`;
+      xml += `  </media>\n`;
     }
-    xml += `  </images>\n`;
+    
+    // Summary Statistics
+    if (data.summary) {
+      xml += `  <summary>\n`;
+      xml += `    <totalElements>${data.summary.totalElements}</totalElements>\n`;
+      xml += `    <contentRichness><![CDATA[${data.summary.contentRichness}]]></contentRichness>\n`;
+      xml += `    <dataQuality>${data.summary.dataQuality}</dataQuality>\n`;
+      xml += `    <scrapingDifficulty><![CDATA[${data.summary.scrapingDifficulty}]]></scrapingDifficulty>\n`;
+      xml += `  </summary>\n`;
+    }
     
     xml += '</webpage>';
     
@@ -2840,10 +3289,28 @@ function formatAsXML(data: any): string {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'DataShark API is running',
-    version: '1.0.0',
+    message: 'DataShark AI-Enhanced Web Scraper',
+    version: '2.0.0',
+    description: 'Intelligent web scraping with AI-powered business intelligence and content analysis',
+    features: [
+      'AI-Enhanced Content Analysis',
+      'Business Intelligence Extraction',
+      'Technical Assessment',
+      'Competitive Analysis',
+      'SEO Health Scoring',
+      'Price Tracking & Alerts',
+      'Content Blueprint Analysis',
+      'Advanced Pattern Recognition'
+    ],
+    aiCapabilities: {
+      businessInsights: 'Industry analysis, business model identification, competitive advantages',
+      contentAnalysis: 'Quality assessment, topic extraction, improvement suggestions',
+      technicalInsights: 'Performance indicators, security assessment, mobile readiness',
+      dataExtraction: 'Structured data quality, extraction difficulty, best data sources',
+      actionableInsights: 'Business opportunities, data utilization, monitoring recommendations'
+    },
     endpoints: {
-      POST: '/api/tools/datashark - Scrape a website',
+      POST: '/api/tools/datashark - Scrape and analyze a website with AI enhancement',
     },
     usage: {
       method: 'POST',
@@ -2858,6 +3325,14 @@ export async function GET() {
           custom: 'object (optional)'
         }
       }
+    },
+    outputStructure: {
+      standardData: 'Traditional scraping data (page content, links, images, etc.)',
+      aiInsights: 'AI-generated business intelligence and analysis',
+      seoHealth: 'Comprehensive SEO scoring and recommendations',
+      priceTracking: 'Price monitoring and alert capabilities',
+      contentBlueprint: 'Content strategy and quality analysis',
+      metadata: 'Enhanced metadata including AI processing information'
     }
   });
 }
