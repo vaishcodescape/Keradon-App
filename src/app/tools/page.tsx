@@ -12,11 +12,8 @@ import { Progress } from "@/components/ui/progress"
 import { ChevronRight, Home, BarChart3, Globe, HelpCircle, Upload, Search, Database, Activity, Clock, Zap, Command, Download, ExternalLink, Mail, Phone, Calendar, DollarSign, Hash, AtSign, MapPin, FileText, Users, Link as LinkIcon, Trash2, FileDown, Copy, Check, X, AlertTriangle, CheckCircle, XCircle, Eye, Star, Target, TrendingDown } from "lucide-react"
 import Link from "next/link"
 import { FileUpload } from "@/components/ui/file-upload"
-<<<<<<< HEAD
 import { QueryHammerheadInterface } from "@/components/queryhammerhead-interface"
-=======
 import jsPDF from 'jspdf'
->>>>>>> main
 
 interface Tool {
   id: string;
