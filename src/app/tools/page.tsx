@@ -12,11 +12,9 @@ import { Progress } from "@/components/ui/progress"
 import { ChevronRight, Home, BarChart3, Globe, HelpCircle, Upload, Search, Database, Activity, Clock, Zap, Command, Download, ExternalLink, Mail, Phone, Calendar, DollarSign, Hash, AtSign, MapPin, FileText, Users, Link as LinkIcon, Trash2, FileDown, Copy, Check, X, AlertTriangle, CheckCircle, XCircle, Eye, Star, Target, TrendingDown } from "lucide-react"
 import Link from "next/link"
 import { FileUpload } from "@/components/ui/file-upload"
-<<<<<<< HEAD
 import { QueryHammerheadInterface } from "@/components/queryhammerhead-interface"
-=======
+import { VizFinInterface } from "@/components/vizfin-interface"
 import jsPDF from 'jspdf'
->>>>>>> main
 
 interface Tool {
   id: string;
@@ -2839,92 +2837,7 @@ export default function ToolsPage() {
                   )}
 
                   {tool.id === "vizfin" && (
-                    <div className="space-y-6">
-                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <BarChart3 className="h-4 w-4 text-orange-600" />
-                          <span className="font-medium text-orange-800 dark:text-orange-400">VizFin</span>
-                        </div>
-                        <p className="text-sm text-orange-700 dark:text-orange-300">
-                          VizFin creates beautiful, interactive visualizations from your data. Choose your chart type and customize the appearance.
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold flex items-center space-x-2">
-                          <Database className="w-4 h-4 text-orange-500" />
-                          <span>Upload Data</span>
-                        </label>
-                        <FileUpload />
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">Chart Type</label>
-                          <Select>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select chart type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="line">Line Chart</SelectItem>
-                              <SelectItem value="bar">Bar Chart</SelectItem>
-                              <SelectItem value="pie">Pie Chart</SelectItem>
-                              <SelectItem value="scatter">Scatter Plot</SelectItem>
-                              <SelectItem value="area">Area Chart</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">Theme</label>
-                          <Select>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select theme" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="light">Light</SelectItem>
-                              <SelectItem value="dark">Dark</SelectItem>
-                              <SelectItem value="auto">Auto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">X-Axis Column</label>
-                          <Input placeholder="e.g., date, category, name" className="h-11 text-base" />
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold">Y-Axis Column</label>
-                          <Input placeholder="e.g., value, count, amount" className="h-11 text-base" />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold">Chart Title</label>
-                        <Input placeholder="Enter a descriptive title for your chart" className="h-11 text-base" />
-                      </div>
-                      
-                      <div className="flex justify-center pt-2">
-                        <Button 
-                          onClick={() => handleRunTool(tool.id)}
-                          disabled={isRunning}
-                          className="px-8 h-11 text-base font-semibold"
-                        >
-                          {isRunning && activeTool === tool.id ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Generating Chart...
-                            </>
-                          ) : (
-                            <>
-                              <BarChart3 className="w-4 h-4 mr-2" />
-                              Create Visualization
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                    <VizFinInterface />
                   )}
                 </CardContent>
               </Card>
