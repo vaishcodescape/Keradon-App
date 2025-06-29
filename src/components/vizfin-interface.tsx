@@ -1,0 +1,451 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileUpload } from '@/components/ui/file-upload';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { BarChart3, LineChart, PieChart, Download, AlertCircle, TrendingUp, Database, FileText } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  LineChart as RechartsLineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+
+interface VizFinData {
+  data: any[];
+  columns: string[];
+  insights: any;
+  metadata: any;
+}
+
+const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff'];
+
+export function VizFinInterface() {
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [chartType, setChartType] = useState<string>('bar');
+  const [xAxis, setXAxis] = useState<string>('');
+  const [yAxis, setYAxis] = useState<string>('');
+  const [chartTitle, setChartTitle] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<VizFinData | null>(null);
+  const [error, setError] = useState<string>('');
+
+  const handleFileUpload = (files: File[]) => {
+    setUploadedFiles(files);
+    setResults(null);
+    setError('');
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setResults(null);
+    setError('');
+  };
+
+  const handleGenerateChart = async () => {
+    if (uploadedFiles.length === 0) {
+      setError('Please upload a file first');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFiles[0]);
+      formData.append('chartType', chartType);
+      formData.append('xAxis', xAxis);
+      formData.append('yAxis', yAxis);
+      formData.append('chartTitle', chartTitle);
+
+      const response = await fetch('/api/tools/vizfin', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process file');
+      }
+
+      setResults(data);
+    } catch (err) {
+      console.error('Error generating chart:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate chart');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderChart = () => {
+    if (!results) return null;
+
+    const { data, metadata } = results;
+    const { chartType: type, xAxis: xCol, yAxis: yCol } = metadata;
+
+    const chartProps = {
+      data,
+      margin: { top: 20, right: 30, left: 20, bottom: 5 }
+    };
+
+    switch (type) {
+      case 'line':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...chartProps}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={xCol} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey={yCol} stroke="#8884d8" strokeWidth={2} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'area':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart {...chartProps}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={xCol} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Area type="monotone" dataKey={yCol} stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+            </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case 'pie':
+        const pieData = data.slice(0, 10).map((item, index) => ({
+          name: item[xCol],
+          value: item[yCol],
+          fill: CHART_COLORS[index % CHART_COLORS.length]
+        }));
+        
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsPieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                outerRadius={150}
+                fill="#8884d8"
+                dataKey="value"
+                label
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+
+      default: // bar
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart {...chartProps}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={xCol} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey={yCol} fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+    }
+  };
+
+  const downloadChart = () => {
+    if (!results) return;
+    
+    const dataStr = JSON.stringify(results.data, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vizfin-${results.metadata.fileName}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Info Header */}
+      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+        <div className="flex items-center space-x-2 mb-2">
+          <BarChart3 className="h-4 w-4 text-orange-600" />
+          <span className="font-medium text-orange-800 dark:text-orange-400">VizFin</span>
+        </div>
+        <p className="text-sm text-orange-700 dark:text-orange-300">
+          Transform your data into beautiful, interactive visualizations. Upload CSV or JSON files and create charts instantly.
+        </p>
+      </div>
+
+      {/* File Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            Upload Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FileUpload 
+            onChange={handleFileUpload}
+            onRemove={handleRemoveFile}
+          />
+          {uploadedFiles.length > 0 && (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-green-600" />
+                <span className="font-medium">{uploadedFiles[0].name}</span>
+                <Badge variant="outline">
+                  {(uploadedFiles[0].size / 1024).toFixed(1)}KB
+                </Badge>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chart Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Chart Configuration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Chart Type</label>
+              <Select value={chartType} onValueChange={setChartType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select chart type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bar">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Bar Chart
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="line">
+                    <div className="flex items-center gap-2">
+                      <LineChart className="w-4 h-4" />
+                      Line Chart
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="area">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Area Chart
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pie">
+                    <div className="flex items-center gap-2">
+                      <PieChart className="w-4 h-4" />
+                      Pie Chart
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Chart Title</label>
+              <Input 
+                placeholder="Enter chart title" 
+                value={chartTitle}
+                onChange={(e) => setChartTitle(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">X-Axis Column</label>
+              <Input 
+                placeholder="e.g., date, category, name" 
+                value={xAxis}
+                onChange={(e) => setXAxis(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Y-Axis Column</label>
+              <Input 
+                placeholder="e.g., value, count, amount" 
+                value={yAxis}
+                onChange={(e) => setYAxis(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {results && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">Available Columns:</p>
+              <div className="flex flex-wrap gap-1">
+                                 {results.columns.map((col: string, index: number) => (
+                   <Badge key={index} variant="secondary" className="text-xs">
+                     {col}
+                   </Badge>
+                 ))}
+              </div>
+            </div>
+          )}
+
+          <Button 
+            onClick={handleGenerateChart}
+            disabled={isLoading || uploadedFiles.length === 0}
+            className="w-full"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating Chart...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Create Visualization
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 dark:border-red-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              <span className="font-medium">Error:</span>
+              <span>{error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results */}
+      {results && (
+        <div className="space-y-6">
+          {/* Chart Display */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>{results.metadata.title}</CardTitle>
+              <Button variant="outline" size="sm" onClick={downloadChart}>
+                <Download className="w-4 h-4 mr-2" />
+                Export Data
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {renderChart()}
+            </CardContent>
+          </Card>
+
+          {/* Data Insights */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Data Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Dataset Overview</p>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">{results.insights.totalRows}</span> rows</p>
+                    <p><span className="font-medium">{results.insights.totalColumns}</span> columns</p>
+                    <p><span className="font-medium">{results.metadata.fileSize}</span> bytes</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Column Types</p>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">{results.insights.numericColumns.length}</span> numeric</p>
+                    <p><span className="font-medium">{results.insights.textColumns.length}</span> text</p>
+                    <p><span className="font-medium">{results.insights.dateColumns.length}</span> date</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Recommendations</p>
+                  <div className="space-y-1 text-sm">
+                    {results.insights.numericColumns.length > 0 && (
+                      <p>✓ Good for numeric charts</p>
+                    )}
+                    {results.insights.dateColumns.length > 0 && (
+                      <p>✓ Time series ready</p>
+                    )}
+                    {results.insights.textColumns.length > 0 && (
+                      <p>✓ Category data available</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Suggested Columns:</p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">For X-Axis (Categories):</p>
+                    <div className="flex flex-wrap gap-1">
+                                             {[...results.insights.textColumns, ...results.insights.dateColumns].map((col: string, index: number) => (
+                         <Badge key={index} variant="outline" className="text-xs cursor-pointer hover:bg-muted"
+                                onClick={() => setXAxis(col)}>
+                           {col}
+                         </Badge>
+                       ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">For Y-Axis (Values):</p>
+                    <div className="flex flex-wrap gap-1">
+                                             {results.insights.numericColumns.map((col: string, index: number) => (
+                         <Badge key={index} variant="outline" className="text-xs cursor-pointer hover:bg-muted"
+                                onClick={() => setYAxis(col)}>
+                           {col}
+                         </Badge>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+} 
