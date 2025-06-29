@@ -14,7 +14,6 @@ built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powe
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-1E1E1E?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.1-1E293B?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![shadcn](https://img.shields.io/badge/shadcn-UI-18181B?style=flat-square&logoColor=white)](https://ui.shadcn.com/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109.2-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 ## Features
 
 - 🚀 Next.js 15.3.3 for the frontend
@@ -24,7 +23,6 @@ built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powe
 - 🛠️ shadcn components for UI elements
 - ⚡ Supabase 2.39.7 for data management
 - 🔐 NextAuth.js 4.24.7 for authentication
-- ⚡ Fast-API 0.109.2 for L.L.M integration
 - 📦 Modern development tooling
 
 ## Prerequisites
