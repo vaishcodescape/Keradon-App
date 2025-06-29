@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import React, { useRef, useState } from "react";
 import { motion } from "motion/react";
-import { IconUpload } from "@tabler/icons-react";
+import { IconUpload, IconX } from "@tabler/icons-react";
 import { useDropzone } from "react-dropzone";
 
 const mainVariant = {
@@ -27,8 +27,10 @@ const secondaryVariant = {
 
 export const FileUpload = ({
   onChange,
+  onRemove,
 }: {
   onChange?: (files: File[]) => void;
+  onRemove?: (fileIndex: number, file: File) => void;
 }) => {
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +38,13 @@ export const FileUpload = ({
   const handleFileChange = (newFiles: File[]) => {
     setFiles((prevFiles) => [...prevFiles, ...newFiles]);
     onChange && onChange(newFiles);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    const fileToRemove = files[index];
+    const updatedFiles = files.filter((_, i) => i !== index);
+    setFiles(updatedFiles);
+    onRemove && onRemove(index, fileToRemove);
   };
 
   const handleClick = () => {
@@ -83,26 +92,41 @@ export const FileUpload = ({
                   layoutId={idx === 0 ? "file-upload" : "file-upload-" + idx}
                   className={cn(
                     "relative overflow-hidden z-40 bg-white dark:bg-neutral-900 flex flex-col items-start justify-start md:h-24 p-4 mt-4 w-full mx-auto rounded-md",
-                    "shadow-sm"
+                    "shadow-sm group/fileitem hover:shadow-md transition-shadow"
                   )}
                 >
                   <div className="flex justify-between w-full items-center gap-4">
-                    <motion.p
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        layout
+                        className="text-base text-neutral-700 dark:text-neutral-300 truncate flex-1"
+                      >
+                        {file.name}
+                      </motion.p>
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        layout
+                        className="rounded-lg px-2 py-1 w-fit shrink-0 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-white shadow-input"
+                      >
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      </motion.p>
+                    </div>
+                    <motion.button
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       layout
-                      className="text-base text-neutral-700 dark:text-neutral-300 truncate max-w-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile(idx);
+                      }}
+                      className="opacity-0 group-hover/fileitem:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-500 hover:text-red-600 dark:hover:text-red-400"
+                      title={`Remove ${file.name}`}
                     >
-                      {file.name}
-                    </motion.p>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      layout
-                      className="rounded-lg px-2 py-1 w-fit shrink-0 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-white shadow-input"
-                    >
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB
-                    </motion.p>
+                      <IconX className="h-4 w-4" />
+                    </motion.button>
                   </div>
 
                   <div className="flex text-sm md:flex-row flex-col items-start md:items-center w-full mt-2 justify-between text-neutral-600 dark:text-neutral-400">

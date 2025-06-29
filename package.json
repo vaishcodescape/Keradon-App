@@ -40,8 +40,12 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.18.1",
     "geist": "^1.4.2",
+<<<<<<< HEAD
+    "groq-sdk": "^0.26.0",
+=======
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
+>>>>>>> main
     "lucide-react": "^0.519.0",
     "motion": "^12.18.1",
     "next": "15.3.4",
