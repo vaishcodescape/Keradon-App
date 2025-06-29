@@ -7,10 +7,9 @@
 </div>
 
 A modern desktop application designed to make data analysis and data analytics easy through smart web scraping get your desired data quickly and efficiently
-built with Next.js, Electron.js, and Tailwind CSS, featuring a beautiful UI powered by shadcn and Aceternity components and a L.L.M powered by Python integrated with Fast-API.
+built with Next.js and Tailwind CSS, featuring a beautiful UI powered by shadcn and Aceternity components and a L.L.M powered by Python integrated with Fast-API.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.3-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Electron](https://img.shields.io/badge/Electron-29.1.0-2C2E3B?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-1E1E1E?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.1-1E293B?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![shadcn](https://img.shields.io/badge/shadcn-UI-18181B?style=flat-square&logoColor=white)](https://ui.shadcn.com/)
