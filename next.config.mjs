@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true,
+    unoptimized: false,
+    domains: ['lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
+    formats: ['image/webp', 'image/avif'],
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
   async headers() {
     return [

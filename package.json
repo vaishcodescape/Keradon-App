@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
     "build:electron": "tsc -p tsconfig.electron.json",
     "electron:dev": "npm run build:electron && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron dist/main.js\"",
     "electron": "cross-env NODE_ENV=development electron dist/main.js",
