@@ -239,6 +239,88 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
                     )}
                   </TabsContent>
                 </Tabs>
+                {/* Download Buttons */}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const dataStr = JSON.stringify(results.data, null, 2);
+                      const blob = new Blob([dataStr], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `datashark-${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Export as CSV
+                      const csvData = typeof results.data === 'string' ? results.data :
+                        Object.entries(results.data).map(([key, value]) =>
+                          `"${key}","${JSON.stringify(value).replace(/"/g, '""')}"`
+                        ).join('\n');
+                      const blob = new Blob([`"Section","Data"\n${csvData}`], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `datashark-${new Date().toISOString().split('T')[0]}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Export as XML
+                      const xmlData = typeof results.data === 'string' ? results.data :
+                        (results.metadata?.format === 'xml' ? results.data : '<root>' + JSON.stringify(results.data) + '</root>');
+                      const blob = new Blob([xmlData], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `datashark-${new Date().toISOString().split('T')[0]}.xml`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    XML
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Export as Text
+                      const textData = typeof results.data === 'string' ? results.data : JSON.stringify(results.data, null, 2);
+                      const blob = new Blob([textData], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `datashark-${new Date().toISOString().split('T')[0]}.txt`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Text
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
