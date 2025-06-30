@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { UpdateProjectRequest } from '@/lib/types/project';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+
+// Create a Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +29,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const { data: project, error } = await supabase
+    const { data: project, error } = await supabaseAdmin
       .from('projects')
       .select(`
         *,
@@ -43,7 +55,7 @@ export async function GET(
     }
 
     // Get data count for the project
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from('project_data')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', project.id);
@@ -74,7 +86,7 @@ export async function PUT(
     const body: UpdateProjectRequest = await request.json();
     
     // Verify project ownership
-    const { data: existingProject, error: checkError } = await supabase
+    const { data: existingProject, error: checkError } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('id', id)
@@ -101,7 +113,7 @@ export async function PUT(
     if (body.tags !== undefined) updateData.tags = body.tags;
     if (body.status !== undefined) updateData.status = body.status;
 
-    const { data: updatedProject, error: updateError } = await supabase
+    const { data: updatedProject, error: updateError } = await supabaseAdmin
       .from('projects')
       .update(updateData)
       .eq('id', id)
@@ -124,7 +136,7 @@ export async function PUT(
     }
 
     // Get data count for the project
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from('project_data')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', updatedProject.id);
@@ -154,7 +166,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Verify project ownership
-    const { data: existingProject, error: checkError } = await supabase
+    const { data: existingProject, error: checkError } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('id', id)
@@ -170,19 +182,19 @@ export async function DELETE(
     }
 
     // Delete project data first
-    await supabase
+    await supabaseAdmin
       .from('project_data')
       .delete()
       .eq('project_id', id);
 
     // Delete project tools
-    await supabase
+    await supabaseAdmin
       .from('project_tools')
       .delete()
       .eq('project_id', id);
 
     // Delete the project
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('projects')
       .delete()
       .eq('id', id);

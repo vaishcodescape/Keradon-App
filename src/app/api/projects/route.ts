@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { CreateProjectRequest, ProjectWithTools } from '@/lib/types/project';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+
+// Validate required environment variables
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+}
+
+// Create a Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,12 +32,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log("Fetching projects for user:", session.user.id);
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const category = searchParams.get('category');
     const isPublic = searchParams.get('public');
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('projects')
       .select(`
         *,
@@ -53,10 +75,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
     }
 
+    console.log(`Found ${projects?.length || 0} projects for user ${session.user.id}`);
+
     // Get data count for each project
     const projectsWithCounts = await Promise.all(
       projects.map(async (project) => {
-        const { count } = await supabase
+        const { count } = await supabaseAdmin
           .from('project_data')
           .select('*', { count: 'exact', head: true })
           .eq('project_id', project.id);
@@ -97,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the project
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .insert({
         name: name.trim(),
@@ -125,7 +149,7 @@ export async function POST(request: NextRequest) {
         is_enabled: true
       }));
 
-      const { error: toolsError } = await supabase
+      const { error: toolsError } = await supabaseAdmin
         .from('project_tools')
         .insert(toolsToInsert);
 
@@ -136,7 +160,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the complete project with tools
-    const { data: completeProject, error: fetchError } = await supabase
+    const { data: completeProject, error: fetchError } = await supabaseAdmin
       .from('projects')
       .select(`
         *,

@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+
+// Create a Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +29,7 @@ export async function GET(
     const { id } = await params;
 
     // Verify project ownership
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('id', id)
@@ -38,7 +50,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('project_data')
       .select('*')
       .eq('project_id', id);
@@ -87,7 +99,7 @@ export async function POST(
     const { id } = await params;
 
     // Verify project ownership
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('id', id)
@@ -113,7 +125,7 @@ export async function POST(
     }
 
     // Save the project data
-    const { data: savedData, error } = await supabase
+    const { data: savedData, error } = await supabaseAdmin
       .from('project_data')
       .insert({
         project_id: id,
@@ -131,7 +143,7 @@ export async function POST(
     }
 
     // Update project's updated_at timestamp
-    await supabase
+    await supabaseAdmin
       .from('projects')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', id);

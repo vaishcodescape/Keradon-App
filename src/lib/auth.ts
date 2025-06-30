@@ -85,12 +85,23 @@ export const authOptions: NextAuthOptions = {
         if (account.provider === "google") {
           // For Google OAuth, create or get user from Supabase
           try {
+            console.log("Google OAuth user:", { 
+              id: user.id, 
+              email: user.email, 
+              name: user.name 
+            });
+            
             const { user: supabaseUser } = await UserService.signInWithOAuth({
               email: user.email!,
               name: user.name || user.email!,
               provider: 'google',
               providerId: user.id,
               image: user.image,
+            });
+            
+            console.log("Supabase user created/found:", { 
+              id: supabaseUser?.id, 
+              email: supabaseUser?.email 
             });
             
             return {
@@ -101,8 +112,11 @@ export const authOptions: NextAuthOptions = {
             };
           } catch (error) {
             console.error("Google OAuth error:", error);
+            // Still return the token with Google user ID as fallback
             return {
               ...token,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
               id: user.id,
             };
           }
@@ -122,6 +136,9 @@ export const authOptions: NextAuthOptions = {
       session.user.id = token.id as string;
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
+      
+      console.log("Session created with user ID:", session.user.id);
+      
       return session;
     },
   },

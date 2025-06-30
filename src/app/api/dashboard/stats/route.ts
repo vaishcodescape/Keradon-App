@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+
+// Create a Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +26,7 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id;
 
     // Fetch projects statistics
-    const { data: projects, error: projectsError } = await supabase
+    const { data: projects, error: projectsError } = await supabaseAdmin
       .from('projects')
       .select('id, status, created_at, updated_at')
       .eq('user_id', userId);
@@ -25,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch project data (scraping results, etc.)
-    const { data: projectData, error: dataError } = await supabase
+    const { data: projectData, error: dataError } = await supabaseAdmin
       .from('project_data')
       .select(`
         id, 
@@ -44,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch project tools
-    const { data: projectTools, error: toolsError } = await supabase
+    const { data: projectTools, error: toolsError } = await supabaseAdmin
       .from('project_tools')
       .select(`
         id,
