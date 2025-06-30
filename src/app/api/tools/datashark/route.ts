@@ -2252,8 +2252,8 @@ export async function POST(request: NextRequest) {
       format,
       elementsFound,
       scraperUsed: usedBasicMode ? 'ScraperAPI (Basic)' : 'ScraperAPI (Enhanced)',
-      aiEnhanced: enhancedData.aiInsights ? true : false,
-      aiModel: enhancedData.aiInsights?.model || null
+      aiEnhanced: !!(enhancedData as any).aiInsights,
+      aiModel: (enhancedData as any).aiInsights?.model || null
     };
 
     // Format the output based on requested format
@@ -3248,9 +3248,10 @@ function formatAsXML(data: any): string {
     xml += `  </links>\n`;
 
     // Data Patterns
-    if (data.insights?.patterns) {
+    const patterns = data.aiInsights?.patterns || data.insights?.patterns;
+    if (patterns) {
       xml += `  <patterns>\n`;
-      Object.entries(data.insights.patterns).forEach(([category, items]: [string, any]) => {
+      Object.entries(patterns).forEach(([category, items]: [string, any]) => {
         if (Array.isArray(items) && items.length > 0) {
           xml += `    <${category}>\n`;
           items.forEach((item: string) => 

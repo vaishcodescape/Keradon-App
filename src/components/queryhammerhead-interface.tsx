@@ -279,8 +279,38 @@ export function QueryHammerheadInterface() {
 
       {/* Response Section */}
       {response && (
+<<<<<<< HEAD
         <div className="p-4 bg-muted/50 rounded-md whitespace-pre-wrap text-sm">
           {response}
+=======
+        <div className="space-y-4">
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Response</h3>
+            <div className="bg-muted/30 rounded-lg p-4">
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
+                {response}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Example Queries */}
+      {!response && !isLoading && analysisConfig.examples.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm">💡 {mode.charAt(0).toUpperCase() + mode.slice(1)} Examples:</h4>
+          <div className="grid gap-2 text-xs">
+            {analysisConfig.examples.map((example, index) => (
+              <button 
+                key={index}
+                onClick={() => setQuery(example)}
+                className="text-left p-2 rounded bg-background hover:bg-muted/50 transition-colors border border-muted"
+              >
+                &quot;{example}&quot;
+              </button>
+            ))}
+          </div>
+>>>>>>> main
         </div>
       )}
     </div>

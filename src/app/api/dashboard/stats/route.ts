@@ -1,31 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+
+// Create a Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    console.log('Session:', session);
     
     if (!session?.user?.id) {
+      console.error('No user ID in session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const userId = session.user.id;
+    console.log('Fetching dashboard stats for userId:', userId);
 
     // Fetch projects statistics
-    const { data: projects, error: projectsError } = await supabase
+    const { data: projects, error: projectsError } = await supabaseAdmin
       .from('projects')
       .select('id, status, created_at, updated_at')
       .eq('user_id', userId);
-
+    console.log('Projects data:', projects);
     if (projectsError) {
       console.error('Error fetching projects:', projectsError);
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
     }
 
     // Fetch project data (scraping results, etc.)
-    const { data: projectData, error: dataError } = await supabase
+    const { data: projectData, error: dataError } = await supabaseAdmin
       .from('project_data')
       .select(`
         id, 
@@ -37,14 +52,14 @@ export async function GET(request: NextRequest) {
       `)
       .eq('projects.user_id', userId)
       .order('created_at', { ascending: false });
-
+    console.log('Project data:', projectData);
     if (dataError) {
       console.error('Error fetching project data:', dataError);
       return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
     }
 
     // Fetch project tools
-    const { data: projectTools, error: toolsError } = await supabase
+    const { data: projectTools, error: toolsError } = await supabaseAdmin
       .from('project_tools')
       .select(`
         id,
@@ -55,7 +70,7 @@ export async function GET(request: NextRequest) {
         projects!inner(user_id)
       `)
       .eq('projects.user_id', userId);
-
+    console.log('Project tools:', projectTools);
     if (toolsError) {
       console.error('Error fetching project tools:', toolsError);
       return NextResponse.json({ error: 'Failed to fetch project tools' }, { status: 500 });
