@@ -80,6 +80,13 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user, account }) {
+      console.log("JWT callback called with:", { 
+        hasAccount: !!account, 
+        hasUser: !!user, 
+        accountProvider: account?.provider,
+        userId: user?.id 
+      });
+      
       // Initial sign in
       if (account && user) {
         if (account.provider === "google") {
@@ -99,29 +106,35 @@ export const authOptions: NextAuthOptions = {
               image: user.image,
             });
             
+            if (!supabaseUser?.id) {
+              console.error("Could not get or create Supabase user.");
+              throw new Error("Failed to create Supabase user");
+            }
+            
             console.log("Supabase user created/found:", { 
-              id: supabaseUser?.id, 
-              email: supabaseUser?.email 
+              id: supabaseUser.id, 
+              email: supabaseUser.email 
             });
             
-            return {
+            const newToken = {
               ...token,
               accessToken: account.access_token,
               refreshToken: account.refresh_token,
-              id: supabaseUser?.id || user.id,
+              id: supabaseUser.id,
             };
+            
+            console.log("Returning new token with ID:", newToken.id);
+            return newToken;
           } catch (error) {
             console.error("Google OAuth error:", error);
-            // Still return the token with Google user ID as fallback
-            return {
-              ...token,
-              accessToken: account.access_token,
-              refreshToken: account.refresh_token,
-              id: user.id,
-            };
+            throw error; // This will cause the sign-in to fail
           }
         } else {
           // For credentials provider
+          if (!user.id) {
+            console.error("No user ID for credentials provider");
+            throw new Error("Invalid user ID");
+          }
           return {
             ...token,
             accessToken: user.accessToken,
@@ -130,12 +143,19 @@ export const authOptions: NextAuthOptions = {
           };
         }
       }
+      console.log("Returning existing token with ID:", token.id);
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id as string;
-      session.accessToken = token.accessToken as string;
-      session.refreshToken = token.refreshToken as string;
+      if (token.id) {
+        session.user.id = token.id as string;
+      }
+      if (token.accessToken) {
+        session.accessToken = token.accessToken as string;
+      }
+      if (token.refreshToken) {
+        session.refreshToken = token.refreshToken as string;
+      }
       
       console.log("Session created with user ID:", session.user.id);
       
