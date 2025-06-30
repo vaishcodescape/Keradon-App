@@ -20,8 +20,8 @@ export function QueryHammerheadInterface() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<QueryMode>("analysis");
   const [model, setModel] = useState<GroqModel>("llama-3.3-70b-versatile");
-  const [context, setContext] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [context, setContext] = useState("");
   const [response, setResponse] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,8 +96,6 @@ export function QueryHammerheadInterface() {
 
   const handleFileUpload = async (files: File[]) => {
     setUploadedFiles(prev => [...prev, ...files]);
-    
-    // Read file content for context
     for (const file of files) {
       if (file.type.startsWith('text/') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
         try {
@@ -114,44 +112,33 @@ export function QueryHammerheadInterface() {
   const handleRemoveFile = (index: number) => {
     const fileToRemove = uploadedFiles[index];
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-    
-    // Remove file content from context if it was added
     if (fileToRemove && context.includes(`--- File: ${fileToRemove.name} ---`)) {
-      const fileContextPattern = new RegExp(`\\n\\n--- File: ${fileToRemove.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ---[\\s\\S]*?(?=\\n\\n---|$)`, 'g');
+      const fileContextPattern = new RegExp(`\\n\\n--- File: ${fileToRemove.name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')} ---[\\s\\S]*?(?=\\n\\n---|$)`, 'g');
       setContext(prev => prev.replace(fileContextPattern, '').trim());
     }
   };
 
   const handleClearAllFiles = () => {
     setUploadedFiles([]);
-    // Clear any file-related context
-    setContext(prev => {
-      const withoutFileContent = prev.replace(/\n\n--- File: .*? ---[\s\S]*?(?=\n\n---|$)/g, '');
-      return withoutFileContent.trim();
-    });
+    setContext("");
   };
 
   const handleSubmit = async () => {
     if (!query.trim()) return;
-
     setIsLoading(true);
     setResponse("");
-
     try {
-      // Enhanced context with file information
       let enhancedContext = context.trim();
       if (uploadedFiles.length > 0) {
         const fileInfo = uploadedFiles.map(f => `${f.name} (${f.type}, ${(f.size / 1024).toFixed(1)}KB)`).join(', ');
         enhancedContext = `Files uploaded: ${fileInfo}\n\n${enhancedContext}`;
       }
-
       const result = await qhQuery({
         query: query.trim(),
         mode,
         context: enhancedContext || undefined,
         model,
       });
-
       if (result.success) {
         setResponse(result.response || "");
       } else {
@@ -194,17 +181,7 @@ export function QueryHammerheadInterface() {
         </div>
         <FileUpload 
           onChange={handleFileUpload} 
-          onRemove={(fileIndex, file) => {
-            // Remove the file from our state and context
-            const updatedFiles = uploadedFiles.filter((_, i) => i !== fileIndex);
-            setUploadedFiles(updatedFiles);
-            
-            // Remove file content from context if it was added
-            if (context.includes(`--- File: ${file.name} ---`)) {
-              const fileContextPattern = new RegExp(`\\n\\n--- File: ${file.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ---[\\s\\S]*?(?=\\n\\n---|$)`, 'g');
-              setContext(prev => prev.replace(fileContextPattern, '').trim());
-            }
-          }}
+          onRemove={(fileIndex, file) => handleRemoveFile(fileIndex)}
         />
         {uploadedFiles.length > 0 && (
           <div className="space-y-2">
@@ -235,116 +212,75 @@ export function QueryHammerheadInterface() {
         )}
       </div>
 
-      {/* Configuration Section */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <label className="text-sm font-semibold">Analysis Type</label>
-          <Select value={mode} onValueChange={(value) => setMode(value as QueryMode)}>
-            <SelectTrigger className="h-11">
-              <SelectValue placeholder="Select analysis type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="analysis">📊 Statistical Analysis</SelectItem>
-              <SelectItem value="research">🔍 Data Research & Insights</SelectItem>
-              <SelectItem value="code">💻 Data Processing Code</SelectItem>
-              <SelectItem value="creative">🎨 Data Visualization Ideas</SelectItem>
-              <SelectItem value="debug">🎯 Data Quality Assessment</SelectItem>
-              <SelectItem value="optimization">⚡ Query & Performance Optimization</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-3">
-          <label className="text-sm font-semibold">AI Model</label>
-          <Select value={model} onValueChange={(value) => setModel(value as GroqModel)}>
-            <SelectTrigger className="h-11">
-              <SelectValue placeholder="Select AI model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="llama-3.3-70b-versatile">🦙 Llama 3.3 70B (Best)</SelectItem>
-              <SelectItem value="deepseek-r1-distill-llama-70b">🧠 DeepSeek R1 (Reasoning)</SelectItem>
-              <SelectItem value="qwen/qwen3-32b">🔥 Qwen3 32B (Large Context)</SelectItem>
-              <SelectItem value="llama-3.1-8b-instant">⚡ Llama 3.1 8B (Fast)</SelectItem>
-              <SelectItem value="gemma2-9b-it">💎 Gemma2 9B (Balanced)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Query Input */}
+      {/* Query Input Section */}
       <div className="space-y-3">
-        <label className="text-sm font-semibold">Data Analysis Query</label>
-        <Textarea 
+        <label className="text-sm font-semibold">Your Query</label>
+        <Textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={analysisConfig.placeholder}
-          rows={4}
-          className="resize-none text-base"
+          className="w-full min-h-[80px]"
         />
       </div>
 
-      {/* Additional Context */}
-      <div className="space-y-3">
-        <label className="text-sm font-semibold">Dataset Context & Requirements (Optional)</label>
-        <Textarea 
-          value={context}
-          onChange={(e) => setContext(e.target.value)}
-          placeholder="Describe your dataset, business objectives, specific metrics to focus on, or any constraints (e.g., 'Sales data from 2023, focus on regional performance', 'Customer data with privacy considerations')"
-          rows={3}
-          className="resize-none text-base"
-        />
+      {/* Mode and Model Selection */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <label className="text-sm font-semibold">Analysis Type</label>
+          <Select value={mode} onValueChange={setMode}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="analysis">Analysis</SelectItem>
+              <SelectItem value="research">Research</SelectItem>
+              <SelectItem value="code">Code</SelectItem>
+              <SelectItem value="creative">Creative</SelectItem>
+              <SelectItem value="debug">Debug</SelectItem>
+              <SelectItem value="optimization">Optimization</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <label className="text-sm font-semibold">Model</label>
+          <Select value={model} onValueChange={setModel}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="llama-3.3-70b-versatile">Llama 3.3 70B</SelectItem>
+              <SelectItem value="llama-3.1-8b-instant">Llama 3.1 8B</SelectItem>
+              <SelectItem value="gemma2-9b-it">Gemma2 9B IT</SelectItem>
+              <SelectItem value="llama3-70b-8192">Llama3 70B 8192</SelectItem>
+              <SelectItem value="llama3-8b-8192">Llama3 8B 8192</SelectItem>
+              <SelectItem value="deepseek-r1-distill-llama-70b">DeepSeek R1 Distill Llama 70B</SelectItem>
+              <SelectItem value="qwen/qwen3-32b">Qwen3 32B</SelectItem>
+              <SelectItem value="qwen-qwq-32b">Qwen QWQ 32B</SelectItem>
+              <SelectItem value="mistral-saba-24b">Mistral Saba 24B</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Submit Button */}
-      <div className="flex justify-center pt-2">
-        <Button 
-          onClick={handleSubmit}
-          disabled={isLoading || !query.trim()}
-          className="px-8 h-11 text-base font-semibold"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <Search className="w-4 h-4 mr-2" />
-              Analyze Data
-            </>
-          )}
-        </Button>
-      </div>
+      <Button onClick={handleSubmit} disabled={isLoading || !query.trim()} className="w-full">
+        {isLoading ? (
+          <>
+            <Loader2 className="animate-spin mr-2 h-4 w-4" />
+            Analyzing...
+          </>
+        ) : (
+          <>
+            <Search className="mr-2 h-4 w-4" />
+            Analyze
+          </>
+        )}
+      </Button>
 
       {/* Response Section */}
       {response && (
-        <div className="space-y-4">
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold mb-4">Response</h3>
-            <div className="bg-muted/30 rounded-lg p-4">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
-                {response}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dynamic Example Queries */}
-      {!response && !isLoading && analysisConfig.examples.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-semibold text-sm">💡 {mode.charAt(0).toUpperCase() + mode.slice(1)} Examples:</h4>
-          <div className="grid gap-2 text-xs">
-            {analysisConfig.examples.map((example, index) => (
-              <button 
-                key={index}
-                onClick={() => setQuery(example)}
-                className="text-left p-2 rounded bg-background hover:bg-muted/50 transition-colors border border-muted"
-              >
-                "{example}"
-              </button>
-            ))}
-          </div>
+        <div className="p-4 bg-muted/50 rounded-md whitespace-pre-wrap text-sm">
+          {response}
         </div>
       )}
     </div>
