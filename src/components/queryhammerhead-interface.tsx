@@ -279,10 +279,6 @@ export function QueryHammerheadInterface() {
 
       {/* Response Section */}
       {response && (
-<<<<<<< HEAD
-        <div className="p-4 bg-muted/50 rounded-md whitespace-pre-wrap text-sm">
-          {response}
-=======
         <div className="space-y-4">
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold mb-4">Response</h3>
@@ -310,7 +306,6 @@ export function QueryHammerheadInterface() {
               </button>
             ))}
           </div>
->>>>>>> main
         </div>
       )}
     </div>
