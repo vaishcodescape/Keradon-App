@@ -227,7 +227,7 @@ export function QueryHammerheadInterface() {
       <div className="flex gap-4">
         <div className="flex-1">
           <label className="text-sm font-semibold">Analysis Type</label>
-          <Select value={mode} onValueChange={setMode}>
+          <Select value={mode} onValueChange={(value) => setMode(value as QueryMode)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -243,7 +243,7 @@ export function QueryHammerheadInterface() {
         </div>
         <div className="flex-1">
           <label className="text-sm font-semibold">Model</label>
-          <Select value={model} onValueChange={setModel}>
+          <Select value={model} onValueChange={(value) => setModel(value as GroqModel)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
