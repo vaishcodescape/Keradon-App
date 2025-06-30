@@ -64,7 +64,8 @@ export const authOptions: NextAuthOptions = {
             refreshToken: session?.refresh_token,
           };
         } catch (error) {
-          console.error("Auth error:", error);
+          // In production, avoid logging sensitive errors
+          // console.error("Auth error:", error);
           return null;
         }
       }
@@ -78,26 +79,36 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      },
+    },
+  },
   callbacks: {
     async jwt({ token, user, account }) {
-      console.log("JWT callback called with:", { 
-        hasAccount: !!account, 
-        hasUser: !!user, 
-        accountProvider: account?.provider,
-        userId: user?.id 
-      });
-      
+      // Remove or comment out debug logs in production
+      // console.log("JWT callback called with:", { 
+      //   hasAccount: !!account, 
+      //   hasUser: !!user, 
+      //   accountProvider: account?.provider,
+      //   userId: user?.id 
+      // });
       // Initial sign in
       if (account && user) {
         if (account.provider === "google") {
           // For Google OAuth, create or get user from Supabase
           try {
-            console.log("Google OAuth user:", { 
-              id: user.id, 
-              email: user.email, 
-              name: user.name 
-            });
-            
+            // console.log("Google OAuth user:", { 
+            //   id: user.id, 
+            //   email: user.email, 
+            //   name: user.name 
+            // });
             const { user: supabaseUser } = await UserService.signInWithOAuth({
               email: user.email!,
               name: user.name || user.email!,
@@ -105,34 +116,30 @@ export const authOptions: NextAuthOptions = {
               providerId: user.id,
               image: user.image,
             });
-            
             if (!supabaseUser?.id) {
-              console.error("Could not get or create Supabase user.");
+              // console.error("Could not get or create Supabase user.");
               throw new Error("Failed to create Supabase user");
             }
-            
-            console.log("Supabase user created/found:", { 
-              id: supabaseUser.id, 
-              email: supabaseUser.email 
-            });
-            
+            // console.log("Supabase user created/found:", { 
+            //   id: supabaseUser.id, 
+            //   email: supabaseUser.email 
+            // });
             const newToken = {
               ...token,
               accessToken: account.access_token,
               refreshToken: account.refresh_token,
               id: supabaseUser.id,
             };
-            
-            console.log("Returning new token with ID:", newToken.id);
+            // console.log("Returning new token with ID:", newToken.id);
             return newToken;
           } catch (error) {
-            console.error("Google OAuth error:", error);
+            // console.error("Google OAuth error:", error);
             throw error; // This will cause the sign-in to fail
           }
         } else {
           // For credentials provider
           if (!user.id) {
-            console.error("No user ID for credentials provider");
+            // console.error("No user ID for credentials provider");
             throw new Error("Invalid user ID");
           }
           return {
@@ -143,7 +150,7 @@ export const authOptions: NextAuthOptions = {
           };
         }
       }
-      console.log("Returning existing token with ID:", token.id);
+      // console.log("Returning existing token with ID:", token.id);
       return token;
     },
     async session({ session, token }) {
@@ -156,9 +163,7 @@ export const authOptions: NextAuthOptions = {
       if (token.refreshToken) {
         session.refreshToken = token.refreshToken as string;
       }
-      
-      console.log("Session created with user ID:", session.user.id);
-      
+      // console.log("Session created with user ID:", session.user.id);
       return session;
     },
   },
@@ -167,5 +172,6 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
-}; 
+  debug: process.env.NODE_ENV === "development", // Never enable debug in production
+};
+// In production, ensure your app is served over HTTPS for secure cookies to work properly. 
