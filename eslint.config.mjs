@@ -9,9 +9,11 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [
+const config = [
   ...compat.extends("next/core-web-vitals"),
   {
     ignores: ["out/**", "dist/**", ".next/**", "node_modules/**"],
   },
 ];
+
+export default config;

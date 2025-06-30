@@ -341,7 +341,7 @@ export function QueryHammerheadInterface() {
                 onClick={() => setQuery(example)}
                 className="text-left p-2 rounded bg-background hover:bg-muted/50 transition-colors border border-muted"
               >
-                "{example}"
+                &quot;{example}&quot;
               </button>
             ))}
           </div>

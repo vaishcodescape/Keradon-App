@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,11 +41,7 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Load recent scrapes for this project
-  useEffect(() => {
-    fetchRecentScrapes();
-  }, [projectId]);
-
-  const fetchRecentScrapes = async () => {
+  const fetchRecentScrapes = useCallback(async () => {
     setLoadingHistory(true);
     try {
       const response = await fetch(`/api/projects/${projectId}/data?tool=datashark&limit=5`);
@@ -58,7 +54,11 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchRecentScrapes();
+  }, [projectId, fetchRecentScrapes]);
 
   const handleScrape = async () => {
     if (!url.trim()) return;
@@ -318,11 +318,7 @@ export default function ProjectWorkspace() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchProject();
-  }, [params.id]);
-
-  const fetchProject = async (showRefreshing = false) => {
+  const fetchProject = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
     
     try {
@@ -341,7 +337,11 @@ export default function ProjectWorkspace() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchProject();
+  }, [params.id, fetchProject]);
 
   // Handle data updates from tools
   const handleDataUpdate = () => {
@@ -701,7 +701,7 @@ export default function ProjectWorkspace() {
               <CardContent className="space-y-4">
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                   <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-                    "{project?.name}"
+                    &quot;{project?.name}&quot;
                   </p>
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                     This will delete {project?.data_count} data items and {project?.project_tools.length} tool configurations.

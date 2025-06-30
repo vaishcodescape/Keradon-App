@@ -152,7 +152,7 @@ export default function SignIn() {
             By signing in, you agree to our Terms of Service and Privacy Policy
           </p>
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/sign-up" className="text-primary hover:underline">
               Sign up
             </Link>

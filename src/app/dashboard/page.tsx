@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Moon, Sun, TrendingUp, TrendingDown, Activity, Clock, RefreshCw } from "lucide-react";
@@ -34,7 +34,7 @@ export default function Dashboard() {
   ];
 
   // Fetch dashboard data
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!session?.user?.id) return;
     
     try {
@@ -54,7 +54,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [session?.user?.id]);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -99,7 +99,7 @@ export default function Dashboard() {
     if (session?.user?.id && mounted) {
       fetchDashboardData();
     }
-  }, [session?.user?.id, mounted]);
+  }, [session?.user?.id, mounted, fetchDashboardData]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function Dashboard() {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [session?.user?.id]);
+  }, [session?.user?.id, fetchDashboardData]);
 
 
 
