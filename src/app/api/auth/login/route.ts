@@ -14,7 +14,6 @@ export async function POST(request: Request) {
     }
 
     const data = await UserService.signIn(email, password);
-    redirect('/dashboard');
     return NextResponse.json(data);
     
   } catch (error: any) {
