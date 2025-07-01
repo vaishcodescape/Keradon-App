@@ -23,7 +23,7 @@ export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { session, isLoading } = useSession();
+  const { session, loading: sessionLoading } = useSession();
 
   const routes = [
     { name: 'Overview', path: '/dashboard' },
@@ -114,7 +114,7 @@ export default function Dashboard() {
 
 
 
-  if (!mounted || isLoading) {
+  if (!mounted || sessionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn } from "next-auth/react";
+import { SupabaseAuth } from "@/lib/auth/supabase-auth";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,94 +17,52 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const router = useRouter();
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const router = useRouter();
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password: string) => {
-    const requirements = [
-      { test: (p: string) => p.length >= 8, message: "At least 8 characters" },
-      { test: (p: string) => /[A-Z]/.test(p), message: "One uppercase letter" },
-      { test: (p: string) => /[a-z]/.test(p), message: "One lowercase letter" },
-      { test: (p: string) => /[0-9]/.test(p), message: "One number" },
-    ];
-
-    const failedRequirements = requirements
-      .filter(req => !req.test(password))
-      .map(req => req.message);
-
-    return failedRequirements.length > 0
-      ? `Password must contain: ${failedRequirements.join(", ")}`
-      : null;
-  };
-
-  const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPassword("");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateEmail(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
     setIsFormLoading(true);
-
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      toast.error(passwordError);
+    
+    // Validate password match
+    if (password !== confirmPassword) {
+      toast.error("Passwords don't match");
       setIsFormLoading(false);
       return;
     }
 
+    // Validate password strength
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      setIsFormLoading(false);
+      return;
+    }
+    
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-        }),
-      });
+      const { data, error } = await SupabaseAuth.signUpWithEmail(email, password, name);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          throw new Error("An account with this email already exists");
+      if (error) {
+        console.error("Sign up error:", error);
+        if (error.includes("User already registered")) {
+          toast.error("An account with this email already exists. Please sign in instead.");
+        } else if (error.includes("Password should be at least 6 characters")) {
+          toast.error("Password must be at least 6 characters long");
+        } else if (error.includes("Unable to validate email address")) {
+          toast.error("Please enter a valid email address");
+        } else {
+          toast.error("Sign up failed. Please try again.");
         }
-        throw new Error(data.message || "Registration failed");
+      } else if (data?.user) {
+        toast.success("Account created successfully! Please check your email to confirm your account.");
+        router.push("/sign-in");
+      } else {
+        toast.error("Sign up failed. Please try again.");
       }
-
-      // Show success message and instructions
-      toast.success(
-        "Registration successful! Please Sign in.",
-        {
-          duration: 5000,
-        }
-      );
-
-      // Reset form and redirect to sign-in
-      resetForm();
-      router.push("/sign-in");
     } catch (error) {
-      console.error("Registration error:", error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Registration failed. Please try again.";
-      toast.error(errorMessage);
+      console.error("Sign up exception:", error);
+      toast.error("An error occurred during sign up");
     } finally {
       setIsFormLoading(false);
     }
@@ -112,24 +70,19 @@ export default function SignUp() {
 
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
+    
     try {
-      const result = await signIn("google", {
-        redirect: false,
-        callbackUrl: "/dashboard",
-      });
+      const { data, error } = await SupabaseAuth.signInWithGoogle();
 
-      if (!result?.error) {
-        toast.success("Signed up with Google successfully");
-        router.push("/dashboard");
-        router.refresh();
-      } else if (result.error === "OAuthAccountNotLinked") {
-        toast.error("An account with this email already exists. Please sign in with your original method.");
-        router.push("/sign-in");
+      if (error) {
+        console.error("Google sign up error:", error);
+        toast.error("Failed to sign up with Google. Please try again.");
       } else {
-        toast.error("Google sign up failed. Please try again.");
+        // The redirect will happen automatically
+        toast.success("Redirecting to Google...");
       }
     } catch (error) {
-      console.error("Google sign up error:", error);
+      console.error("Google sign up exception:", error);
       toast.error("An error occurred during Google sign up");
     } finally {
       setIsGoogleLoading(false);
@@ -137,25 +90,33 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background relative">
+      {(isFormLoading || isGoogleLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="flex flex-col items-center gap-4">
+            <Loading size={32} />
+            <span className="text-white text-lg font-medium">
+              {isGoogleLoading ? "Redirecting to Google..." : "Creating your account..."}
+            </span>
+          </div>
+        </div>
+      )}
       <Card className="w-[350px]">
         <CardHeader>
-          <CardTitle>Create an account</CardTitle>
-          <CardDescription>Sign up to get started with Keradon</CardDescription>
+          <CardTitle>Create your account</CardTitle>
+          <CardDescription>Join us and start your journey today</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="Enter your name"
+                placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                disabled={isFormLoading || isGoogleLoading}
-                minLength={2}
               />
             </div>
             <div className="space-y-2">
@@ -167,8 +128,6 @@ export default function SignUp() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isFormLoading || isGoogleLoading}
-                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
               />
             </div>
             <div className="space-y-2">
@@ -179,8 +138,16 @@ export default function SignUp() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isFormLoading || isGoogleLoading}
-                minLength={8}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <PasswordInput
+                id="confirmPassword"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
               />
             </div>
             <Button type="submit" className="w-full" disabled={isFormLoading || isGoogleLoading}>
@@ -190,7 +157,7 @@ export default function SignUp() {
                   Creating account...
                 </div>
               ) : (
-                "Sign up"
+                "Create account"
               )}
             </Button>
           </form>
@@ -223,7 +190,7 @@ export default function SignUp() {
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <p className="text-sm text-muted-foreground">
-            By signing up, you agree to our Terms of Service and Privacy Policy
+            By creating an account, you agree to our Terms of Service and Privacy Policy
           </p>
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}

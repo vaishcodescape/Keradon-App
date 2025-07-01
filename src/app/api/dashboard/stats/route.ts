@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-
-// Create a Supabase client with service role key to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/config/supabase-admin';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    console.log('Session:', session);
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
     
-    if (!session?.user?.id) {
-      console.error('No user ID in session');
+    // Get the current user session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.user?.id) {
+      console.error('No valid session:', sessionError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       .from('projects')
       .select('id, status, created_at, updated_at')
       .eq('user_id', userId);
-    console.log('Projects data:', projects);
+    
     if (projectsError) {
       console.error('Error fetching projects:', projectsError);
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('projects.user_id', userId)
       .order('created_at', { ascending: false });
-    console.log('Project data:', projectData);
+    
     if (dataError) {
       console.error('Error fetching project data:', dataError);
       return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
         projects!inner(user_id)
       `)
       .eq('projects.user_id', userId);
-    console.log('Project tools:', projectTools);
+    
     if (toolsError) {
       console.error('Error fetching project tools:', toolsError);
       return NextResponse.json({ error: 'Failed to fetch project tools' }, { status: 500 });
@@ -199,14 +200,15 @@ export async function GET(request: NextRequest) {
         activeProjects,
         totalProjects,
         totalDataPoints,
-        activeScrapes,
-        projectsThisWeek: projectsLast7Days,
-        dataPointsThisWeek: dataPointsLast7Days
+        activeScrapes
       }
     });
 
   } catch (error) {
-    console.error('Error in dashboard stats:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Dashboard stats error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 } 

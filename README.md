@@ -1,145 +1,172 @@
-# Keradon 
+# Keradon
 
-<div align="center">
-  <div style="background-color: #18181B; display: inline-block; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <img src="src/assets/logo-white.png" alt="Keradon Logo" width="200"/>
-  </div>
-</div>
+A modern web application built with Next.js 15, featuring a robust tech stack for scalable development.
 
-A modern desktop application designed to make data analysis and data analytics easy through smart web scraping get your desired data quickly and efficiently
-built with Next.js and Tailwind CSS, featuring a beautiful UI powered by shadcn and Aceternity components and a L.L.M powered by Python integrated with Fast-API.
+## 🚀 Features
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.3.3-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-1E1E1E?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.1-1E293B?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![shadcn](https://img.shields.io/badge/shadcn-UI-18181B?style=flat-square&logoColor=white)](https://ui.shadcn.com/)
-## Features
+- **Next.js 15** with App Router and Server Components
+- **React 19** with concurrent features
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **Supabase** for authentication and database
+- **Modern UI components** with shadcn/ui
 
-- 🚀 Next.js 15.3.3 for the frontend
-- Cross Native Desktop feature coming soon!
-- 🎨 Tailwind CSS 3.4.1 for styling
-- 🎯 TypeScript 5.3.3 support
-- 🛠️ shadcn components for UI elements
-- ⚡ Supabase 2.39.7 for data management
-- 🔐 NextAuth.js 4.24.7 for authentication
-- 📦 Modern development tooling
+## 🛠 Tech Stack
 
-## Prerequisites
-
-- Node.js (Latest LTS version recommended)
-- npm or yarn package manager
-
-## Getting Started
-
-1. Clone the repository:
-```bash
-git clone [your-repository-url]
-cd keradon-app
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
-
-3. Set up environment variables:
-Create a `.env` file in the root directory with the following variables:
-```env
-# NextAuth.js
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here # Generate using: openssl rand -base64 32
-
-# Optional OAuth providers (if needed)
-# GOOGLE_ID=your-google-client-id
-# GOOGLE_SECRET=your-google-client-secret
-# GITHUB_ID=your-github-client-id
-# GITHUB_SECRET=your-github-client-secret
-
-# Supabase Configuration
-NEXT_SUPABASE_URL=your-project-url
-NEXT_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
-
-4. Run the development server:
-```bash
-# For web development
-npm run dev
-# or
-yarn dev
-
-# For desktop app development
-npm run electron
-# or
-yarn electron
-```
-
-5. Build the application:
-```bash
-npm run build
-# or
-yarn build
-```
-
-## Authentication
-
-The application uses NextAuth.js for authentication. The following features are available:
-
-- Credentials-based authentication
-- Session management
-- Protected routes
-- Custom sign-in page
-
-To use authentication in your components:
-
-```typescript
-'use client';
-import { useSession, signIn, signOut } from "next-auth/react";
-
-// Access session
-const { data: session } = useSession();
-
-// Sign in
-await signIn();
-
-// Sign out
-await signOut();
-```
-
-## Available Scripts
-
-- `npm run dev` - Start the Next.js development server
-- `npm run build` - Build the Next.js application
-- `npm run start` - Start the production server
-- `npm run lint` - Run ESLint
-- `npm run electron` - Start the Electron development environment
-
-## Tech Stack
-
-- **Framework**: Next.js 15.3.3
-- **Desktop**: Electron.js 29.1.0
+- **Framework**: Next.js 15.3.4
+- **Language**: TypeScript 5.4.5
 - **Styling**: Tailwind CSS 3.4.1
-- **UI Components**: shadcn
-- **Language**: TypeScript 5.3.3
-- **Authentication**: NextAuth.js 4.24.7
-- **Database**: Supabase 2.39.7
-- **Package Manager**: npm/yarn
+- **Authentication**: Supabase Auth
+- **Database**: Supabase (PostgreSQL)
+- **UI Components**: shadcn/ui
+- **Icons**: Lucide React, React Icons
+- **State Management**: React 19 built-in features
 
-## Contributing
+## 📋 Prerequisites
+
+Before running this project, make sure you have:
+
+- Node.js 18.17 or later
+- npm or yarn package manager
+- A Supabase project for authentication and database
+
+## 🔧 Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# Google OAuth (for Supabase)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+## 🏃‍♂️ Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd keradon-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   - Copy `.env.example` to `.env.local`
+   - Fill in your Supabase and Google OAuth credentials
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🔐 Authentication
+
+The application uses Supabase Auth for authentication. The following features are available:
+
+- **Email/Password Authentication**: Traditional sign-up and sign-in
+- **Google OAuth**: One-click authentication with Google
+- **Session Management**: Automatic session handling and refresh
+- **Protected Routes**: Middleware-based route protection
+
+### Usage Example
+
+```tsx
+import { useAuth } from '@/lib/hooks/useAuth';
+
+function MyComponent() {
+  const { user, loading, signOut } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+  
+  return (
+    <div>
+      {user ? (
+        <div>
+          <p>Welcome, {user.name}!</p>
+          <button onClick={signOut}>Sign Out</button>
+        </div>
+      ) : (
+        <p>Please sign in</p>
+      )}
+    </div>
+  );
+}
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                 # App Router pages and layouts
+├── components/          # Reusable UI components
+│   └── ui/             # shadcn/ui components
+├── lib/                # Utility functions and configurations
+│   ├── auth/           # Authentication utilities
+│   ├── config/         # Configuration files
+│   └── hooks/          # Custom React hooks
+└── types/              # TypeScript type definitions
+```
+
+## 🎨 UI Components
+
+This project uses [shadcn/ui](https://ui.shadcn.com/) for consistent, accessible UI components:
+
+- **Authentication**: Supabase Auth with Google OAuth
+- **Forms**: React Hook Form with Zod validation
+- **Styling**: Tailwind CSS with CSS variables for theming
+- **Icons**: Lucide React for consistent iconography
+
+## 📦 Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript compiler
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Connect your repository to [Vercel](https://vercel.com)
+3. Add your environment variables in Vercel dashboard
+4. Deploy!
+
+### Other Platforms
+
+This is a standard Next.js application and can be deployed to any platform that supports Node.js:
+
+- **Netlify**: Use the Next.js build plugin
+- **Railway**: Connect your GitHub repository
+- **DigitalOcean App Platform**: Deploy directly from GitHub
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the Apache License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🔗 Links
 
-## Support
-
-For support, please open an issue in the repository. 
+- **Next.js Documentation**: [https://nextjs.org/docs](https://nextjs.org/docs)
+- **Supabase Documentation**: [https://supabase.com/docs](https://supabase.com/docs)
+- **Tailwind CSS**: [https://tailwindcss.com](https://tailwindcss.com)
+- **shadcn/ui**: [https://ui.shadcn.com](https://ui.shadcn.com)

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { signIn } from "next-auth/react";
+import { SupabaseAuth } from "@/lib/auth/supabase-auth";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,20 +27,26 @@ export default function SignIn() {
     setIsFormLoading(true);
     
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: "/dashboard",
-      });
+      const { data, error } = await SupabaseAuth.signInWithEmail(email, password);
 
-      if (result?.error) {
-        toast.error("Invalid credentials. Please try again.");
-      } else {
+      if (error) {
+        console.error("Sign in error:", error);
+        if (error.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password. Please check your credentials.");
+        } else if (error.includes("Email not confirmed")) {
+          toast.error("Please check your email and click the confirmation link before signing in.");
+        } else {
+          toast.error("Sign in failed. Please try again.");
+        }
+      } else if (data?.user) {
         toast.success("Signed in successfully");
         router.push("/dashboard");
+        router.refresh();
+      } else {
+        toast.error("Sign in failed. Please try again.");
       }
     } catch (error) {
+      console.error("Sign in exception:", error);
       toast.error("An error occurred during sign in");
     } finally {
       setIsFormLoading(false);
@@ -51,18 +57,17 @@ export default function SignIn() {
     setIsGoogleLoading(true);
     
     try {
-      const result = await signIn("google", {
-        redirect: false,
-        callbackUrl: "/dashboard",
-      });
+      const { data, error } = await SupabaseAuth.signInWithGoogle();
 
-      if (!result?.error) {
-        toast.success("Signed in with Google successfully");
-        router.push("/dashboard");
+      if (error) {
+        console.error("Google sign in error:", error);
+        toast.error("Failed to sign in with Google. Please try again.");
       } else {
-        toast.error("Failed to sign in with Google");
+        // The redirect will happen automatically, so we just show a success message
+        toast.success("Redirecting to Google...");
       }
     } catch (error) {
+      console.error("Google sign in exception:", error);
       toast.error("An error occurred during Google sign in");
     } finally {
       setIsGoogleLoading(false);
@@ -75,7 +80,9 @@ export default function SignIn() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="flex flex-col items-center gap-4">
             <Loading size={32} />
-            <span className="text-white text-lg font-medium">Signing you in...</span>
+            <span className="text-white text-lg font-medium">
+              {isGoogleLoading ? "Redirecting to Google..." : "Signing you in..."}
+            </span>
           </div>
         </div>
       )}
