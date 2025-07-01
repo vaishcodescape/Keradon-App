@@ -23,7 +23,7 @@ export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { session, loading: sessionLoading } = useSession();
+  const { session, loading: sessionLoading, refreshSession } = useSession();
 
   const routes = [
     { name: 'Overview', path: '/dashboard' },
@@ -34,7 +34,7 @@ export default function Dashboard() {
   ];
 
   // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (retry = false) => {
     if (!session?.user?.id) return;
     
     try {
@@ -47,8 +47,13 @@ export default function Dashboard() {
       });
       
       if (response.status === 401) {
-        // Session not fully established yet, silently fail
-        console.log('Session not ready for API calls yet');
+        // Try to refresh session once if unauthorized
+        if (!retry && refreshSession) {
+          await refreshSession();
+          await fetchDashboardData(true);
+        } else {
+          setError('You are not authenticated. Please sign in again.');
+        }
         return;
       }
       
@@ -60,7 +65,6 @@ export default function Dashboard() {
         setError(data.error || 'Failed to fetch dashboard data');
       }
     } catch (err) {
-      // Only show error if we've been trying for a while
       if (dashboardData === null) {
         setError('Failed to load dashboard data');
       }
@@ -69,7 +73,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [session?.user?.id, dashboardData]);
+  }, [session?.user?.id, dashboardData, refreshSession]);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -140,6 +144,19 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if ((!session || !session.user?.id) && !sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardContent className="pt-6 text-center">
+            <p className="text-red-600 mb-4">You are not signed in. Please sign in to view your dashboard.</p>
+            <Button onClick={() => router.push('/sign-in')}>Sign In</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

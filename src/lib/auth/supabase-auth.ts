@@ -191,38 +191,17 @@ export class SupabaseAuth {
   // Private helper methods
   private static async getUserData(userId: string): Promise<AuthUser | null> {
     try {
+      // Ensure Accept header is set to application/json to avoid 406 errors
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
-
-      if (error) {
-        // Handle specific Supabase errors
-        if (error.code === 'PGRST116') {
-          console.log('User not found in users table:', userId);
-          return null; // User doesn't exist in our custom table yet
-        } else if (error.code === 'PGRST106' || error.message?.includes('relation "users" does not exist')) {
-          console.warn('Users table does not exist yet - this is expected for new setups');
-          return null;
-        } else if (error.code === '406' || error.message?.includes('406')) {
-          console.warn('Users table access denied (RLS policy or missing table) - using auth user data');
-          return null;
-        } else {
-          console.error('Error getting user data:', error.message, error);
-          return null;
-        }
-      }
-
-      return data;
-    } catch (error: any) {
-      // Handle network/fetch errors
-      if (error.message?.includes('406') || error.status === 406) {
-        console.warn('Users table not accessible (406 error) - this is expected for new setups');
-        return null;
-      }
-      console.error('Exception in getUserData:', error);
-      return null;
+      // If you get a 406 error, check RLS policies and that the Accept header is application/json
+      if (error) throw error;
+      return data as AuthUser;
+    } catch (error) {
+      throw error;
     }
   }
 
