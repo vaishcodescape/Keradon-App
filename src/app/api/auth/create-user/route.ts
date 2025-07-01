@@ -3,12 +3,9 @@ import { createAuthenticatedClient } from '@/lib/auth/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createAuthenticatedClient();
+    const { supabase, user, error: authError } = await createAuthenticatedClient();
     
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
+    if (authError || !user) {
       console.log('No session found in create-user API');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -30,7 +27,7 @@ export async function POST(request: NextRequest) {
             success: true, 
             message: 'User authenticated, table creation skipped' 
           });
-        } else if (fetchError.message?.includes('406') || fetchError.status === 406) {
+        } else if (fetchError.message?.includes('406')) {
           console.warn('Users table access denied - skipping user creation');
           return NextResponse.json({ 
             success: true, 

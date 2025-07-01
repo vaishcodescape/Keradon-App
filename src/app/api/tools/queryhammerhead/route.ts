@@ -3,11 +3,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 interface QueryRequest {
   query: string;
   mode: 'analysis' | 'research' | 'code' | 'creative' | 'debug' | 'optimization';
@@ -95,6 +90,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Initialize Groq client
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
 
     // Parse request body
     const body: QueryRequest = await request.json();

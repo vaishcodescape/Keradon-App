@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 // List of allowed origins
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://your-production-domain.com'
+  'https://keradon.vercel.app'
 ];
 
 // Public routes that don't require authentication
