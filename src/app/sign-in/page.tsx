@@ -70,7 +70,15 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background relative">
+      {(isFormLoading || isGoogleLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="flex flex-col items-center gap-4">
+            <Loading size={32} />
+            <span className="text-white text-lg font-medium">Signing you in...</span>
+          </div>
+        </div>
+      )}
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
