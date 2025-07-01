@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/config/supabase';
-import { supabaseAdmin } from '@/lib/config/supabase-admin';
 import type { User, Session } from '@supabase/supabase-js';
 
 export interface AuthUser {
@@ -23,6 +22,8 @@ export class SupabaseAuth {
   // Google OAuth Sign In
   static async signInWithGoogle() {
     try {
+      console.log('Initiating Google OAuth...');
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -31,10 +32,16 @@ export class SupabaseAuth {
             access_type: 'offline',
             prompt: 'consent',
           },
-        },
+          scopes: 'email profile'
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Google OAuth initiation error:', error);
+        throw new Error(error.message);
+      }
+
+      console.log('Google OAuth initiated successfully:', data);
       return { data, error: null };
     } catch (error: any) {
       console.error('Google OAuth error:', error);
@@ -54,7 +61,20 @@ export class SupabaseAuth {
 
       // Ensure user exists in our users table
       if (data.user) {
-        await this.ensureUserInDatabase(data.user);
+        // Wait a bit longer for session to be fully established
+        setTimeout(async () => {
+          try {
+            await fetch('/api/auth/create-user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+          } catch (userCreateError) {
+            console.warn('Error creating user record:', userCreateError);
+            // Don't fail the auth process if user creation fails
+          }
+        }, 2000); // Wait 2 seconds for session to stabilize
       }
 
       return { data, error: null };
@@ -106,15 +126,21 @@ export class SupabaseAuth {
       if (error) throw error;
       if (!session) return { session: null, error: null };
 
-      // Get user data from our users table
-      const userData = await this.getUserData(session.user.id);
+      // Try to get user data from our users table, but don't fail if table doesn't exist
+      let userData: AuthUser | null = null;
+      try {
+        userData = await this.getUserData(session.user.id);
+      } catch (dbError) {
+        console.warn('Could not fetch user data from database, using auth data:', dbError);
+      }
       
+      // Use database data if available, otherwise fall back to auth user metadata
       const authSession: AuthSession = {
         user: userData || {
           id: session.user.id,
           email: session.user.email!,
-          name: session.user.user_metadata?.name || session.user.email!,
-          avatar_url: session.user.user_metadata?.avatar_url,
+          name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email!,
+          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
           provider: this.getProvider(session.user),
           created_at: session.user.created_at,
           updated_at: session.user.updated_at || session.user.created_at,
@@ -154,7 +180,6 @@ export class SupabaseAuth {
   static onAuthStateChange(callback: (session: AuthSession | null) => void) {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await this.ensureUserInDatabase(session.user);
         const { session: authSession } = await this.getSession();
         callback(authSession);
       } else {
@@ -164,36 +189,6 @@ export class SupabaseAuth {
   }
 
   // Private helper methods
-  private static async ensureUserInDatabase(user: User) {
-    try {
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-
-      if (!existingUser) {
-        const { error } = await supabaseAdmin
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email!,
-            name: user.user_metadata?.name || user.email!,
-            avatar_url: user.user_metadata?.avatar_url,
-            provider: this.getProvider(user),
-            created_at: user.created_at,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (error && error.code !== '23505') { // Ignore duplicate key errors
-          console.error('Error creating user in database:', error);
-        }
-      }
-    } catch (error) {
-      console.error('Error ensuring user in database:', error);
-    }
-  }
-
   private static async getUserData(userId: string): Promise<AuthUser | null> {
     try {
       const { data, error } = await supabase
@@ -202,10 +197,31 @@ export class SupabaseAuth {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific Supabase errors
+        if (error.code === 'PGRST116') {
+          console.log('User not found in users table:', userId);
+          return null; // User doesn't exist in our custom table yet
+        } else if (error.code === 'PGRST106' || error.message?.includes('relation "users" does not exist')) {
+          console.warn('Users table does not exist yet - this is expected for new setups');
+          return null;
+        } else if (error.code === '406' || error.message?.includes('406')) {
+          console.warn('Users table access denied (RLS policy or missing table) - using auth user data');
+          return null;
+        } else {
+          console.error('Error getting user data:', error.message, error);
+          return null;
+        }
+      }
+
       return data;
-    } catch (error) {
-      console.error('Error getting user data:', error);
+    } catch (error: any) {
+      // Handle network/fetch errors
+      if (error.message?.includes('406') || error.status === 406) {
+        console.warn('Users table not accessible (406 error) - this is expected for new setups');
+        return null;
+      }
+      console.error('Exception in getUserData:', error);
       return null;
     }
   }

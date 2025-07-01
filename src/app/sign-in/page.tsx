@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SupabaseAuth } from "@/lib/auth/supabase-auth";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -19,8 +19,13 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Get redirect destination from URL params or default to dashboard
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +44,13 @@ export default function SignIn() {
           toast.error("Sign in failed. Please try again.");
         }
       } else if (data?.user) {
-        toast.success("Signed in successfully");
-        router.push("/dashboard");
+        // Wait a moment for user creation to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        toast.success("Signed in successfully! Redirecting...");
+        
+        // Redirect to intended destination or dashboard
+        router.push(redirectTo);
         router.refresh();
       } else {
         toast.error("Sign in failed. Please try again.");
@@ -55,21 +65,30 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    setError('');
     
     try {
+      // Store redirect destination before OAuth
+      const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+      sessionStorage.setItem('authRedirectTo', redirectTo);
+      
+      console.log('Starting Google OAuth, will redirect to:', redirectTo);
+      
       const { data, error } = await SupabaseAuth.signInWithGoogle();
-
+      
       if (error) {
-        console.error("Google sign in error:", error);
-        toast.error("Failed to sign in with Google. Please try again.");
-      } else {
-        // The redirect will happen automatically, so we just show a success message
-        toast.success("Redirecting to Google...");
+        console.error('Google sign-in error:', error);
+        setError(error.message);
+        setIsGoogleLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Google sign in exception:", error);
-      toast.error("An error occurred during Google sign in");
-    } finally {
+      
+      console.log('Google OAuth initiated successfully');
+      // The OAuth flow will handle the redirect via the callback page
+      
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      setError(err.message || 'Failed to sign in with Google');
       setIsGoogleLoading(false);
     }
   };

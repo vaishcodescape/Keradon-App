@@ -39,7 +39,19 @@ export default function Dashboard() {
     
     try {
       setError('');
-      const response = await fetch('/api/dashboard/stats');
+      const response = await fetch('/api/dashboard/stats', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.status === 401) {
+        // Session not fully established yet, silently fail
+        console.log('Session not ready for API calls yet');
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -48,13 +60,16 @@ export default function Dashboard() {
         setError(data.error || 'Failed to fetch dashboard data');
       }
     } catch (err) {
-      setError('Failed to load dashboard data');
+      // Only show error if we've been trying for a while
+      if (dashboardData === null) {
+        setError('Failed to load dashboard data');
+      }
       console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, dashboardData]);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -97,20 +112,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (session?.user?.id && mounted) {
-      fetchDashboardData();
+      // Add a small delay to ensure session is fully established
+      const timer = setTimeout(() => {
+        fetchDashboardData();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [session?.user?.id, mounted, fetchDashboardData]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 60 seconds (instead of 30)
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !dashboardData) return;
     
     const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
+      // Only refresh if we still have a valid session
+      if (session?.user?.id) {
+        fetchDashboardData();
+      }
+    }, 60000); // Increased from 30 seconds to 60 seconds
     
     return () => clearInterval(interval);
-  }, [session?.user?.id, fetchDashboardData]);
+  }, [session?.user?.id, dashboardData, fetchDashboardData]);
 
 
 

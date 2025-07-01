@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAuthenticatedClient } from '@/lib/auth/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createAuthenticatedClient();
+    
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.log('No session found in create-user API');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Try to create/update user record in our users table
+    try {
+      // Check if user already exists
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // Handle table not existing or other access issues
+        if (fetchError.code === 'PGRST106' || fetchError.message?.includes('relation "users" does not exist')) {
+          console.warn('Users table does not exist - skipping user creation');
+          return NextResponse.json({ 
+            success: true, 
+            message: 'User authenticated, table creation skipped' 
+          });
+        } else if (fetchError.message?.includes('406') || fetchError.status === 406) {
+          console.warn('Users table access denied - skipping user creation');
+          return NextResponse.json({ 
+            success: true, 
+            message: 'User authenticated, database access limited' 
+          });
+        }
+        throw fetchError;
+      }
+
+      if (!existingUser) {
+        // User doesn't exist, create new record
+        const userData = {
+          id: user.id,
+          email: user.email!,
+          name: user.user_metadata?.name || user.user_metadata?.full_name || user.email!,
+          avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.email!)}`,
+          provider: user.app_metadata?.provider || 'email',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert(userData);
+
+        if (insertError) {
+          console.error('Error creating user record:', insertError);
+          // Don't fail authentication if user creation fails
+          return NextResponse.json({ 
+            success: true, 
+            message: 'User authenticated, database record creation failed',
+            warning: insertError.message 
+          });
+        }
+
+        console.log('User created successfully:', user.email);
+      } else {
+        console.log('User already exists:', user.email);
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'User processed successfully' 
+      });
+
+    } catch (dbError: any) {
+      console.error('Database error in create-user:', dbError);
+      // Don't fail authentication if database operations fail
+      return NextResponse.json({ 
+        success: true, 
+        message: 'User authenticated, database error occurred',
+        warning: dbError.message 
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Error in create-user API:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message 
+    }, { status: 500 });
+  }
+} 

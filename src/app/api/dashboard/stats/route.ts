@@ -14,6 +14,12 @@ export async function GET(request: NextRequest) {
           get(name: string) {
             return cookieStore.get(name)?.value;
           },
+          set(name: string, value: string, options: any) {
+            cookieStore.set({ name, value, ...options });
+          },
+          remove(name: string, options: any) {
+            cookieStore.set({ name, value: '', ...options });
+          },
         },
       }
     );
@@ -21,9 +27,14 @@ export async function GET(request: NextRequest) {
     // Get the current user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (sessionError || !session?.user?.id) {
-      console.error('No valid session:', sessionError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (sessionError) {
+      console.error('Session error in dashboard stats:', sessionError);
+      return NextResponse.json({ error: 'Session error' }, { status: 401 });
+    }
+    
+    if (!session?.user?.id) {
+      console.log('No valid session found in dashboard stats');
+      return NextResponse.json({ error: 'No session found' }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -37,6 +48,23 @@ export async function GET(request: NextRequest) {
     
     if (projectsError) {
       console.error('Error fetching projects:', projectsError);
+      // If tables don't exist yet, return mock data
+      if (projectsError.message?.includes('relation') && projectsError.message?.includes('does not exist')) {
+        console.log('Projects table does not exist yet, returning mock data');
+        return NextResponse.json({
+          success: true,
+          stats: {
+            totalProjects: { value: 0, change: 0, label: 'Total Projects' },
+            activeScrapes: { value: 0, change: 0, label: 'Active Scrapes' },
+            dataPoints: { value: 0, change: 0, label: 'Data Points' },
+            successRate: { value: '0%', change: 0, label: 'Success Rate' }
+          },
+          recentActivity: [],
+          toolUsage: {},
+          chartData: [],
+          summary: { activeProjects: 0, totalDataPoints: 0, recentScrapes: 0 }
+        });
+      }
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
     }
 
@@ -56,7 +84,12 @@ export async function GET(request: NextRequest) {
     
     if (dataError) {
       console.error('Error fetching project data:', dataError);
-      return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
+      // If tables don't exist yet, continue with empty data
+      if (dataError.message?.includes('relation') && dataError.message?.includes('does not exist')) {
+        console.log('Project data table does not exist yet, using empty data');
+      } else {
+        return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
+      }
     }
 
     // Fetch project tools
@@ -74,8 +107,18 @@ export async function GET(request: NextRequest) {
     
     if (toolsError) {
       console.error('Error fetching project tools:', toolsError);
-      return NextResponse.json({ error: 'Failed to fetch project tools' }, { status: 500 });
+      // If tables don't exist yet, continue with empty data
+      if (toolsError.message?.includes('relation') && toolsError.message?.includes('does not exist')) {
+        console.log('Project tools table does not exist yet, using empty data');
+      } else {
+        return NextResponse.json({ error: 'Failed to fetch project tools' }, { status: 500 });
+      }
     }
+
+    // Use empty arrays as defaults if data is null or tables don't exist
+    const safeProjects = projects || [];
+    const safeProjectData = projectData || [];
+    const safeProjectTools = projectTools || [];
 
     // Calculate statistics
     const now = new Date();
@@ -83,37 +126,37 @@ export async function GET(request: NextRequest) {
     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Total projects
-    const totalProjects = projects.length;
-    const activeProjects = projects.filter(p => p.status === 'active').length;
-    const projectsLast7Days = projects.filter(p => new Date(p.created_at) >= last7Days).length;
+    const totalProjects = safeProjects.length;
+    const activeProjects = safeProjects.filter(p => p.status === 'active').length;
+    const projectsLast7Days = safeProjects.filter(p => new Date(p.created_at) >= last7Days).length;
 
     // Data points (scraping results)
-    const totalDataPoints = projectData.length;
-    const dataPointsLast7Days = projectData.filter(d => new Date(d.created_at) >= last7Days).length;
+    const totalDataPoints = safeProjectData.length;
+    const dataPointsLast7Days = safeProjectData.filter(d => new Date(d.created_at) >= last7Days).length;
 
     // Active scrapes (recent data entries)
-    const activeScrapes = projectData.filter(d => new Date(d.created_at) >= last7Days).length;
+    const activeScrapes = safeProjectData.filter(d => new Date(d.created_at) >= last7Days).length;
 
     // Success rate calculation (assuming successful scrapes have data)
-    const recentScrapes = projectData.filter(d => new Date(d.created_at) >= last7Days);
+    const recentScrapes = safeProjectData.filter(d => new Date(d.created_at) >= last7Days);
     const successRate = recentScrapes.length > 0 ? 100 : 0; // Simplified - if we have data, it's successful
 
     // Tool usage statistics
-    const toolUsage = projectTools.reduce((acc, tool) => {
+    const toolUsage = safeProjectTools.reduce((acc, tool) => {
       acc[tool.tool_name] = (acc[tool.tool_name] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     // Recent activity
     const recentActivity = [
-      ...projects.slice(0, 5).map(p => ({
+      ...safeProjects.slice(0, 5).map(p => ({
         id: p.id,
         type: 'project_created',
         message: `Project created`,
         timestamp: p.created_at,
         project_id: p.id
       })),
-      ...projectData.slice(0, 10).map(d => ({
+      ...safeProjectData.slice(0, 10).map(d => ({
         id: d.id,
         type: 'data_scraped',
         message: `Data scraped with ${d.tool_name}`,
@@ -128,12 +171,12 @@ export async function GET(request: NextRequest) {
 
     // Calculate changes (comparing last 7 days to previous 7 days)
     const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const projectsPrevious7Days = projects.filter(p => {
+    const projectsPrevious7Days = safeProjects.filter(p => {
       const createdAt = new Date(p.created_at);
       return createdAt >= previous7Days && createdAt < last7Days;
     }).length;
 
-    const dataPointsPrevious7Days = projectData.filter(d => {
+    const dataPointsPrevious7Days = safeProjectData.filter(d => {
       const createdAt = new Date(d.created_at);
       return createdAt >= previous7Days && createdAt < last7Days;
     }).length;
@@ -154,7 +197,7 @@ export async function GET(request: NextRequest) {
       const dayStart = new Date(date.setHours(0, 0, 0, 0));
       const dayEnd = new Date(date.setHours(23, 59, 59, 999));
       
-      const dayData = projectData.filter(d => {
+      const dayData = safeProjectData.filter(d => {
         const createdAt = new Date(d.created_at);
         return createdAt >= dayStart && createdAt <= dayEnd;
       });
@@ -162,7 +205,7 @@ export async function GET(request: NextRequest) {
       chartData.push({
         date: dayStart.toISOString().split('T')[0],
         scrapes: dayData.length,
-        projects: projects.filter(p => {
+        projects: safeProjects.filter(p => {
           const createdAt = new Date(p.created_at);
           return createdAt >= dayStart && createdAt <= dayEnd;
         }).length

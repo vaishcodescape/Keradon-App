@@ -18,24 +18,76 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Handle the OAuth callback
-        const { data, error } = await supabase.auth.getSession();
+        console.log('Callback page loaded, processing authentication...');
+        console.log('Current URL:', window.location.href);
         
-        if (error) {
-          console.error('Auth callback error:', error);
-          setError(error.message);
-          setStatus('error');
-          return;
+        // Try to get session with retry logic for OAuth
+        let session = null;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!session && attempts < maxAttempts) {
+          const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Auth callback error:', error);
+            setError(error.message);
+            setStatus('error');
+            return;
+          }
+          
+          if (currentSession?.user) {
+            session = currentSession;
+            break;
+          }
+          
+          attempts++;
+          console.log(`Attempt ${attempts}/${maxAttempts}: No session found, retrying...`);
+          
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between attempts
+          }
         }
 
-        if (data.session) {
+        if (session?.user) {
+          console.log('OAuth session established for user:', session.user.email);
+          
           setStatus('success');
-          // Redirect to dashboard after a short delay
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 2000);
+          
+          // Get redirect destination from session storage or default to dashboard
+          const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
+          sessionStorage.removeItem('authRedirectTo'); // Clean up
+          
+          console.log('Redirecting to:', redirectTo);
+          
+          // Immediate redirect - don't wait for user creation
+          router.push(redirectTo);
+          
+          // Create user record in background (non-blocking)
+          setTimeout(async () => {
+            try {
+              const response = await fetch('/api/auth/create-user', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+              });
+
+              if (!response.ok) {
+                console.warn('Failed to create user record, but auth was successful');
+              } else {
+                console.log('User record created successfully');
+              }
+            } catch (userCreateError) {
+              console.warn('Error creating user record:', userCreateError);
+              // Don't fail the auth process if user creation fails
+            }
+          }, 500); // Small delay to ensure redirect happens first
+          
         } else {
-          setError('No session found after authentication');
+          console.error('No session found after OAuth callback after all attempts');
+          setError('Authentication session could not be established. Please try signing in again.');
           setStatus('error');
         }
       } catch (err: any) {
@@ -45,17 +97,23 @@ function AuthCallbackContent() {
       }
     };
 
-    // Check for error in URL params
+    // Check for error in URL params first
     const errorParam = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
     
     if (errorParam) {
+      console.error('OAuth error in URL:', errorParam, errorDescription);
       setError(errorDescription || errorParam);
       setStatus('error');
       return;
     }
 
-    handleAuthCallback();
+    // Add a small delay to ensure URL processing is complete
+    const timer = setTimeout(() => {
+      handleAuthCallback();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [router, searchParams]);
 
   if (status === 'loading') {
@@ -87,7 +145,7 @@ function AuthCallbackContent() {
             </div>
             <CardTitle className="text-green-600 dark:text-green-400">Sign In Successful!</CardTitle>
             <CardDescription>
-              You have been successfully signed in. Redirecting to dashboard...
+              You have been successfully signed in. Taking you to your dashboard...
             </CardDescription>
           </CardHeader>
         </Card>
