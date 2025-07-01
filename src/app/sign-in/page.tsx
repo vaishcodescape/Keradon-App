@@ -32,8 +32,8 @@ function SignInContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Get redirect destination from URL params or default to dashboard
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  // Always redirect to dashboard after sign in
+  const redirectTo = '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +57,8 @@ function SignInContent() {
         
         toast.success("Signed in successfully! Redirecting...");
         
-        // Redirect to intended destination or dashboard
-        router.push(redirectTo);
+        // Always redirect to dashboard
+        router.push('/dashboard');
         router.refresh();
       } else {
         toast.error("Sign in failed. Please try again.");
@@ -76,9 +76,8 @@ function SignInContent() {
     setError('');
     
     try {
-      // Store redirect destination before OAuth
-      const redirectTo = searchParams.get('redirectTo') || '/dashboard';
-      sessionStorage.setItem('authRedirectTo', redirectTo);
+      // Always store dashboard as redirect destination before OAuth
+      sessionStorage.setItem('authRedirectTo', '/dashboard');
       
       console.log('Starting Google OAuth, will redirect to:', redirectTo);
       
