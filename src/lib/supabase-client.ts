@@ -20,7 +20,7 @@ export const userProfileService = {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('*', { head: false })
       .eq('id', userId)
       .single()
     

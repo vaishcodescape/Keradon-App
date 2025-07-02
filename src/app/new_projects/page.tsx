@@ -99,6 +99,7 @@ export default function NewProjects() {
           tags: formData.tags,
           selected_tools: formData.selectedTools
         }),
+        credentials: 'include'
       });
 
       const result = await response.json();

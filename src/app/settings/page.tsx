@@ -54,7 +54,9 @@ export default function SettingsPage() {
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/user/profile')
+      const response = await fetch('/api/user/profile', {
+        credentials: 'include'
+      })
       
       if (!response.ok) {
         throw new Error('Failed to fetch profile')
@@ -107,6 +109,7 @@ export default function SettingsPage() {
           push_notifications: formData.push_notifications,
           two_factor_enabled: formData.two_factor_enabled,
         }),
+        credentials: 'include'
       })
 
       if (!response.ok) {

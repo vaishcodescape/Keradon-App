@@ -27,7 +27,9 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('/api/projects');
+      const response = await fetch('/api/projects', {
+        credentials: 'include'
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -48,6 +50,7 @@ export default function ProjectsPage() {
     try {
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
 
       const data = await response.json();

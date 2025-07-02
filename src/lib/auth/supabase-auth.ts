@@ -69,6 +69,7 @@ export class SupabaseAuth {
               headers: {
                 'Content-Type': 'application/json',
               },
+              credentials: 'include',
             });
           } catch (userCreateError) {
             console.warn('Error creating user record:', userCreateError);
@@ -194,7 +195,7 @@ export class SupabaseAuth {
       // Ensure Accept header is set to application/json to avoid 406 errors
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('*', { head: false })
         .eq('id', userId)
         .single();
       // If you get a 406 error, check RLS policies and that the Accept header is application/json

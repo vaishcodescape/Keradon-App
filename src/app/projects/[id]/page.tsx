@@ -44,7 +44,9 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
   const fetchRecentScrapes = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}/data?tool=datashark&limit=5`);
+      const response = await fetch(`/api/projects/${projectId}/data?tool=datashark&limit=5`, {
+        credentials: 'include'
+      });
       const data = await response.json();
       if (data.success) {
         setRecentScrapes(data.data);
@@ -71,7 +73,8 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
       const response = await fetch('/api/tools/datashark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), format })
+        body: JSON.stringify({ url: url.trim(), format }),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -88,7 +91,8 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
             data_type: 'scraping_result',
             data: data.data,
             metadata: data.metadata
-          })
+          }),
+          credentials: 'include'
         });
 
         if (saveResponse.ok) {
@@ -404,7 +408,9 @@ export default function ProjectWorkspace() {
     if (showRefreshing) setRefreshing(true);
     
     try {
-      const response = await fetch(`/api/projects/${params.id}`);
+      const response = await fetch(`/api/projects/${params.id}`, {
+        credentials: 'include'
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -437,6 +443,7 @@ export default function ProjectWorkspace() {
     try {
       const response = await fetch(`/api/projects/${params.id}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
 
       const data = await response.json();

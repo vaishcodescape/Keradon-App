@@ -15,7 +15,7 @@ export class UserService {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('*', { head: false })
         .eq('id', id)
         .single();
 
