@@ -12,6 +12,7 @@ import { ChevronRight, Home, Bell, User, Shield, Palette, Github, Loader2 } from
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useNavigation } from "@/lib/hooks/useNavigation"
 import { toast } from "sonner"
 
 interface UserProfile {
@@ -45,6 +46,7 @@ export default function SettingsPage() {
     new_password: ''
   })
   const router = useRouter()
+  const { goBack } = useNavigation()
 
   useEffect(() => {
     setMounted(true)
@@ -443,7 +445,7 @@ export default function SettingsPage() {
             <div className="flex space-x-4 ml-auto">
               <Button 
                 variant="outline" 
-                onClick={() => router.push('/dashboard')}
+                onClick={() => goBack('/dashboard')}
                 disabled={saving || clearing}
               >
                 Cancel

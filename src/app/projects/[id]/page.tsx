@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useNavigation } from '@/lib/hooks/useNavigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -396,6 +397,7 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
 export default function ProjectWorkspace() {
   const params = useParams();
   const router = useRouter();
+  const { goBack } = useNavigation();
   const [project, setProject] = useState<ProjectWithTools | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -449,7 +451,7 @@ export default function ProjectWorkspace() {
       const data = await response.json();
       
       if (data.success) {
-        router.push('/projects');
+        goBack('/projects');
       } else {
         setError(data.error || 'Failed to delete project');
       }
@@ -493,7 +495,7 @@ export default function ProjectWorkspace() {
         <Card className="w-96">
           <CardContent className="pt-6 text-center">
             <p className="text-red-600 mb-4">{error || 'Project not found'}</p>
-            <Button onClick={() => router.push('/projects')}>
+            <Button onClick={() => goBack('/projects')}>
               Back to Projects
             </Button>
           </CardContent>
@@ -525,7 +527,7 @@ export default function ProjectWorkspace() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push('/projects')}
+              onClick={() => goBack('/projects')}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back

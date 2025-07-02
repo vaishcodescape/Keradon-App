@@ -61,21 +61,17 @@ export class SupabaseAuth {
 
       // Ensure user exists in our users table
       if (data.user) {
-        // Wait a bit longer for session to be fully established
-        setTimeout(async () => {
-          try {
-            await fetch('/api/auth/create-user', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-            });
-          } catch (userCreateError) {
-            console.warn('Error creating user record:', userCreateError);
-            // Don't fail the auth process if user creation fails
-          }
-        }, 2000); // Wait 2 seconds for session to stabilize
+        // Create user record immediately (non-blocking)
+        fetch('/api/auth/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        }).catch(userCreateError => {
+          console.warn('Error creating user record:', userCreateError);
+          // Don't fail the auth process if user creation fails
+        });
       }
 
       return { data, error: null };
@@ -110,6 +106,17 @@ export class SupabaseAuth {
   // Sign Out
   static async signOut() {
     try {
+      // Call the API endpoint to clear server-side cookies
+      try {
+        await fetch('/api/auth/signout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch (apiError) {
+        console.warn('API signout failed, continuing with client signout:', apiError);
+      }
+      
+      // Sign out from Supabase client
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       return { error: null };

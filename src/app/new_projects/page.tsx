@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useNavigation } from '@/lib/hooks/useNavigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import { Loading } from "@/components/ui/loading";
 import { ChevronRight, Home, Plus, ArrowLeft, Save, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface ProjectForm {
@@ -33,6 +34,8 @@ const projectCategories = [
 ];
 
 export default function NewProjects() {
+  const router = useRouter();
+  const { goBack } = useNavigation();
   const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +49,6 @@ export default function NewProjects() {
     selectedTools: []
   });
   const [newTag, setNewTag] = useState("");
-  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -121,7 +123,7 @@ export default function NewProjects() {
   };
 
   const handleCancel = () => {
-    router.push("/projects");
+    goBack('/projects');
   };
 
   if (!mounted) {

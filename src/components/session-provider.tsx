@@ -66,6 +66,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         setSession(null);
         setUser(null);
+        // Force a full page reload to clear all cookies and redirect to sign-in
+        window.location.href = '/sign-in';
       }
     } catch (err: any) {
       setError(err.message);
@@ -95,14 +97,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const { data: { subscription } } = SupabaseAuth.onAuthStateChange((authSession) => {
       setSession(authSession);
       setUser(authSession?.user || null);
-      setLoading(false);
+      if (loading) {
+        setLoading(false);
+      }
       setError(null);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [loading]);
 
   return (
     <AuthContext.Provider

@@ -32,8 +32,8 @@ function SignInContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Always redirect to dashboard after sign in
-  const redirectTo = '/dashboard';
+  // Get redirect URL from query params or default to dashboard
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +52,10 @@ function SignInContent() {
           toast.error("Sign in failed. Please try again.");
         }
       } else if (data?.user) {
-        // Wait a moment for user creation to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         toast.success("Signed in successfully! Redirecting...");
         
-        // Always redirect to dashboard
-        router.push('/dashboard');
+        // Redirect to intended destination or dashboard
+        router.push(redirectTo);
         router.refresh();
       } else {
         toast.error("Sign in failed. Please try again.");
@@ -76,8 +73,8 @@ function SignInContent() {
     setError('');
     
     try {
-      // Always store dashboard as redirect destination before OAuth
-      sessionStorage.setItem('authRedirectTo', '/dashboard');
+      // Store the intended redirect destination before OAuth
+      sessionStorage.setItem('authRedirectTo', redirectTo);
       
       console.log('Starting Google OAuth, will redirect to:', redirectTo);
       

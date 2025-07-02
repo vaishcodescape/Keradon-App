@@ -126,7 +126,7 @@ export async function middleware(request: NextRequest) {
       
       if (error || !user) {
         const redirectUrl = new URL('/sign-in', request.url);
-        redirectUrl.searchParams.set('redirectTo', pathname);
+        redirectUrl.searchParams.set('redirectTo', request.url);
         return NextResponse.redirect(redirectUrl);
       }
 

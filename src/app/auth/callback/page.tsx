@@ -24,7 +24,7 @@ function AuthCallbackContent() {
         // Try to get session with retry logic for OAuth
         let session = null;
         let attempts = 0;
-        const maxAttempts = 5;
+        const maxAttempts = 3;
         
         while (!session && attempts < maxAttempts) {
           const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -45,7 +45,7 @@ function AuthCallbackContent() {
           console.log(`Attempt ${attempts}/${maxAttempts}: No session found, retrying...`);
           
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between attempts
+            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
           }
         }
 
@@ -61,7 +61,7 @@ function AuthCallbackContent() {
           console.log('Redirecting to:', redirectTo);
           
           // Immediate redirect - don't wait for user creation
-          router.push(redirectTo);
+          window.location.href = redirectTo;
           
           // Create user record in background (non-blocking)
           setTimeout(async () => {
@@ -83,7 +83,7 @@ function AuthCallbackContent() {
               console.warn('Error creating user record:', userCreateError);
               // Don't fail the auth process if user creation fails
             }
-          }, 500); // Small delay to ensure redirect happens first
+          }, 100); // Minimal delay to ensure redirect happens first
           
         } else {
           console.error('No session found after OAuth callback after all attempts');

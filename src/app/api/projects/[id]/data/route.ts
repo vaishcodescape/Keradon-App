@@ -10,7 +10,7 @@ export async function GET(
     const { session, error: sessionError } = await createAuthenticatedClient();
     
     if (sessionError || !session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -25,10 +25,10 @@ export async function GET(
 
     if (projectError) {
       if (projectError.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
       }
       console.error('Error checking project ownership:', projectError);
-      return NextResponse.json({ error: 'Failed to verify project ownership' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to verify project ownership', details: projectError.message }, { status: 500 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -58,7 +58,7 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching project data:', error);
-      return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch project data', details: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ 
@@ -66,9 +66,9 @@ export async function GET(
       data: projectData 
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in project data GET:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error', details: error?.message || String(error) }, { status: 500 });
   }
 }
 
@@ -80,7 +80,7 @@ export async function POST(
     const { session, error: sessionError } = await createAuthenticatedClient();
     
     if (sessionError || !session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -95,10 +95,10 @@ export async function POST(
 
     if (projectError) {
       if (projectError.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
       }
       console.error('Error checking project ownership:', projectError);
-      return NextResponse.json({ error: 'Failed to verify project ownership' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to verify project ownership', details: projectError.message }, { status: 500 });
     }
 
     const body = await request.json();
@@ -107,6 +107,7 @@ export async function POST(
     // Validate required fields
     if (!tool_name || !data_type || !data) {
       return NextResponse.json({ 
+        success: false,
         error: 'Missing required fields: tool_name, data_type, data' 
       }, { status: 400 });
     }
@@ -126,7 +127,7 @@ export async function POST(
 
     if (error) {
       console.error('Error saving project data:', error);
-      return NextResponse.json({ error: 'Failed to save project data' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to save project data', details: error.message }, { status: 500 });
     }
 
     // Update project's updated_at timestamp
@@ -140,8 +141,8 @@ export async function POST(
       data: savedData 
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in project data POST:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error', details: error?.message || String(error) }, { status: 500 });
   }
 } 

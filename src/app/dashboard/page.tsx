@@ -37,6 +37,9 @@ export default function Dashboard() {
   const fetchDashboardData = useCallback(async (retry = false) => {
     if (!session?.user?.id) return;
     
+    // Prevent multiple concurrent requests
+    if (loading && !retry) return;
+    
     try {
       setError('');
       const response = await fetch('/api/dashboard/stats', {
@@ -73,7 +76,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [session?.user?.id, dashboardData, refreshSession]);
+  }, [session?.user?.id, dashboardData, refreshSession, loading]);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -116,15 +119,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (session?.user?.id && mounted) {
-      // Add a small delay to ensure session is fully established
-      const timer = setTimeout(() => {
-        fetchDashboardData();
-      }, 1000);
-      return () => clearTimeout(timer);
+      // Fetch data immediately when session is available
+      fetchDashboardData();
     }
   }, [session?.user?.id, mounted, fetchDashboardData]);
 
-  // Auto-refresh every 60 seconds (instead of 30)
+  // Auto-refresh every 2 minutes
   useEffect(() => {
     if (!session?.user?.id || !dashboardData) return;
     
@@ -133,7 +133,7 @@ export default function Dashboard() {
       if (session?.user?.id) {
         fetchDashboardData();
       }
-    }, 60000); // Increased from 30 seconds to 60 seconds
+    }, 120000); // 2 minutes instead of 1 minute
     
     return () => clearInterval(interval);
   }, [session?.user?.id, dashboardData, fetchDashboardData]);

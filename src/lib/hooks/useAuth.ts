@@ -53,14 +53,15 @@ export function useAuth(): UseAuthReturn {
       } else {
         setSession(null);
         setUser(null);
-        router.push('/sign-in');
+        // Force a full page reload to clear all cookies and redirect to sign-in
+        window.location.href = '/sign-in';
       }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const refreshSession = useCallback(async () => {
     try {
