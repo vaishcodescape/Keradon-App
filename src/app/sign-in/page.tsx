@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SupabaseAuth } from "@/lib/auth/supabase-auth";
+import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import { FcGoogle } from "react-icons/fc";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,7 +40,7 @@ function SignInContent() {
     setIsFormLoading(true);
     
     try {
-      const { data, error } = await SupabaseAuth.signInWithEmail(email, password);
+      const { data, error } = await FirebaseAuth.signInWithEmail(email, password);
 
       if (error) {
         console.error("Sign in error:", error);
@@ -54,9 +54,11 @@ function SignInContent() {
       } else if (data?.user) {
         toast.success("Signed in successfully! Redirecting...");
         
-        // Redirect to intended destination or dashboard
-        router.push(redirectTo);
-        router.refresh();
+        // Always redirect to dashboard after successful sign-in
+        setTimeout(() => {
+          router.push('/dashboard');
+          router.refresh();
+        }, 500);
       } else {
         toast.error("Sign in failed. Please try again.");
       }
@@ -73,12 +75,12 @@ function SignInContent() {
     setError('');
     
     try {
-      // Store the intended redirect destination before OAuth
-      sessionStorage.setItem('authRedirectTo', redirectTo);
+      // Always redirect to dashboard after OAuth
+      sessionStorage.setItem('authRedirectTo', '/dashboard');
       
-      console.log('Starting Google OAuth, will redirect to:', redirectTo);
+      console.log('Starting Google OAuth, will redirect to dashboard');
       
-      const { data, error } = await SupabaseAuth.signInWithGoogle();
+      const { data, error } = await FirebaseAuth.signInWithGoogle();
       
       if (error) {
         console.error('Google sign-in error:', error);

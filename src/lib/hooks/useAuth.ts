@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { SupabaseAuth, type AuthSession, type AuthUser } from '@/lib/auth/supabase-auth';
+import { FirebaseAuth, type AuthSession, type AuthUser } from '@/lib/auth/firebase-auth';
+import { isFirebaseConfigured } from '@/lib/config/firebase';
 import { useRouter } from 'next/navigation';
 
 interface UseAuthReturn {
@@ -24,7 +25,17 @@ export function useAuth(): UseAuthReturn {
       setLoading(true);
       setError(null);
       
-      const { session: authSession, error: sessionError } = await SupabaseAuth.getSession();
+      // Check if Firebase is configured first
+      const configured = await isFirebaseConfigured();
+      if (!configured) {
+        setError('Firebase not configured - please set up environment variables');
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
+      const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
       
       if (sessionError) {
         setError(sessionError);
@@ -46,15 +57,15 @@ export function useAuth(): UseAuthReturn {
   const signOut = useCallback(async () => {
     try {
       setLoading(true);
-      const { error: signOutError } = await SupabaseAuth.signOut();
+      const { error: signOutError } = await FirebaseAuth.signOut();
       
       if (signOutError) {
         setError(signOutError);
       } else {
         setSession(null);
         setUser(null);
-        // Force a full page reload to clear all cookies and redirect to sign-in
-        window.location.href = '/sign-in';
+        // Force a full page reload to clear all cookies and redirect to home
+        window.location.href = '/';
       }
     } catch (err: any) {
       setError(err.message);
@@ -65,7 +76,7 @@ export function useAuth(): UseAuthReturn {
 
   const refreshSession = useCallback(async () => {
     try {
-      const { error: refreshError } = await SupabaseAuth.refreshSession();
+      const { error: refreshError } = await FirebaseAuth.refreshSession();
       if (refreshError) {
         setError(refreshError);
       } else {
@@ -81,14 +92,24 @@ export function useAuth(): UseAuthReturn {
     loadSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = SupabaseAuth.onAuthStateChange((authSession) => {
-      setSession(authSession);
-      setUser(authSession?.user || null);
-      setLoading(false);
+    const setupAuthListener = async () => {
+      const unsubscribe = await FirebaseAuth.onAuthStateChange((authSession) => {
+        setSession(authSession);
+        setUser(authSession?.user || null);
+        setLoading(false);
+      });
+      return unsubscribe;
+    };
+
+    let unsubscribe: (() => void) | null = null;
+    setupAuthListener().then(unsub => {
+      unsubscribe = unsub;
     });
 
     return () => {
-      subscription.unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [loadSession]);
 

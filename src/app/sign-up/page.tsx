@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SupabaseAuth } from "@/lib/auth/supabase-auth";
+import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ export default function SignUp() {
     }
     
     try {
-      const { data, error } = await SupabaseAuth.signUpWithEmail(email, password, name);
+      const { data, error } = await FirebaseAuth.signUpWithEmail(email, password, name);
 
       if (error) {
         console.error("Sign up error:", error);
@@ -72,7 +72,7 @@ export default function SignUp() {
     setIsGoogleLoading(true);
     
     try {
-      const { data, error } = await SupabaseAuth.signInWithGoogle();
+      const { data, error } = await FirebaseAuth.signInWithGoogle();
 
       if (error) {
         console.error("Google sign up error:", error);

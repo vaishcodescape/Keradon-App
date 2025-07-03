@@ -16,11 +16,11 @@ export function AuthDebug() {
   const isAuthenticated = !!user && !!session;
 
   return (
-    <Card className="w-full max-w-md mx-auto mt-8">
+    <Card className="w-full max-w-md mx-auto mt-8 border-dashed border-2 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/10">
       <CardHeader>
-        <CardTitle className="text-sm">Auth Debug Info</CardTitle>
+        <CardTitle className="text-sm text-yellow-800 dark:text-yellow-200">🔧 Auth Debug Info</CardTitle>
         <CardDescription className="text-xs">
-          Development only - Supabase Authentication status
+          Development only - Firebase Authentication status
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -80,14 +80,17 @@ export function AuthDebug() {
           </div>
         )}
 
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={refreshSession}
-          className="w-full text-xs"
-        >
-          Refresh Session
-        </Button>
+        <div className="pt-2 border-t">
+          <Button 
+            onClick={refreshSession} 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Session'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,6 +1,6 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { adminAuth } from '@/lib/config/firebase-admin';
 
 // List of allowed origins
 const allowedOrigins = [
@@ -14,7 +14,7 @@ const publicRoutes = [
   '/sign-in',
   '/sign-up',
   '/auth/callback',
-  '/auth/error',
+  '/api/firebase-config'
 ];
 
 // Routes that require authentication
@@ -74,65 +74,33 @@ export async function middleware(request: NextRequest) {
   
   if (isProtectedRoute) {
     try {
-      // Create a Supabase client configured to use cookies
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return request.cookies.get(name)?.value;
-            },
-            set(name: string, value: string, options: any) {
-              request.cookies.set({
-                name,
-                value,
-                ...options,
-              });
-              response = NextResponse.next({
-                request: {
-                  headers: request.headers,
-                },
-              });
-              response.cookies.set({
-                name,
-                value,
-                ...options,
-              });
-            },
-            remove(name: string, options: any) {
-              request.cookies.set({
-                name,
-                value: '',
-                ...options,
-              });
-              response = NextResponse.next({
-                request: {
-                  headers: request.headers,
-                },
-              });
-              response.cookies.set({
-                name,
-                value: '',
-                ...options,
-              });
-            },
-          },
-        }
-      );
-      
-      // Get the session
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      if (error || !user) {
-        const redirectUrl = new URL('/sign-in', request.url);
-        redirectUrl.searchParams.set('redirectTo', request.url);
-        return NextResponse.redirect(redirectUrl);
+      // Get the Firebase token from cookies
+      const token = request.cookies.get('firebase-token')?.value;
+
+      if (!token) {
+        console.log('No Firebase token found, redirecting to sign-in');
+        return NextResponse.redirect(new URL('/sign-in', request.url));
       }
 
+      // Verify the Firebase token
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      
+      if (!decodedToken) {
+        console.log('Invalid Firebase token, redirecting to sign-in');
+        return NextResponse.redirect(new URL('/sign-in', request.url));
+      }
+
+      // Token is valid, continue to the requested page
+      console.log('Valid Firebase token for user:', decodedToken.email);
+      return response;
+
     } catch (error) {
-      console.error('Middleware auth error:', error);
-      return NextResponse.redirect(new URL('/sign-in', request.url));
+      console.error('Firebase token verification error:', error);
+      
+      // Clear invalid token and redirect to sign-in
+      const response = NextResponse.redirect(new URL('/sign-in', request.url));
+      response.cookies.delete('firebase-token');
+      return response;
     }
   }
 
@@ -143,11 +111,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

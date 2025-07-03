@@ -12,6 +12,7 @@ import { IconHome, IconSettings, IconChartBar, IconTools,IconFolder } from "@tab
 import { UserMenu } from "@/components/user-menu";
 import { useSession } from "@/lib/hooks/useSession";
 import { DashboardData, RecentActivity } from "@/lib/types/dashboard";
+import { AuthDebug } from "@/components/auth-debug";
 
 export default function Dashboard() {
   const [isVisible, setIsVisible] = useState(false);
@@ -35,13 +36,19 @@ export default function Dashboard() {
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async (retry = false) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log('No user session, skipping dashboard data fetch');
+      setLoading(false);
+      return;
+    }
     
     // Prevent multiple concurrent requests
     if (loading && !retry) return;
     
     try {
       setError('');
+      console.log('Fetching dashboard data for user:', session.user.id);
+      
       const response = await fetch('/api/dashboard/stats', {
         credentials: 'include',
         headers: {
@@ -50,10 +57,12 @@ export default function Dashboard() {
       });
       
       if (response.status === 401) {
+        console.log('Unauthorized response, attempting session refresh');
         // Try to refresh session once if unauthorized
         if (!retry && refreshSession) {
           await refreshSession();
-          await fetchDashboardData(true);
+          // Wait a bit for session to refresh before retrying
+          setTimeout(() => fetchDashboardData(true), 1000);
         } else {
           setError('You are not authenticated. Please sign in again.');
         }
@@ -61,6 +70,7 @@ export default function Dashboard() {
       }
       
       const data = await response.json();
+      console.log('Dashboard data response:', data);
       
       if (data.success) {
         setDashboardData(data);
@@ -68,8 +78,9 @@ export default function Dashboard() {
         setError(data.error || 'Failed to fetch dashboard data');
       }
     } catch (err) {
+      const errorMessage = 'Failed to load dashboard data';
       if (dashboardData === null) {
-        setError('Failed to load dashboard data');
+        setError(errorMessage);
       }
       console.error('Dashboard fetch error:', err);
     } finally {
@@ -119,10 +130,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (session?.user?.id && mounted) {
-      // Fetch data immediately when session is available
-      fetchDashboardData();
+      console.log('Session available, fetching dashboard data');
+      // Add a small delay to ensure session is fully established
+      setTimeout(() => {
+        fetchDashboardData();
+      }, 500);
+    } else if (mounted && !sessionLoading && !session?.user?.id) {
+      console.log('No session found after loading completed');
+      setLoading(false);
     }
-  }, [session?.user?.id, mounted, fetchDashboardData]);
+  }, [session?.user?.id, mounted, sessionLoading, fetchDashboardData]);
 
   // Auto-refresh every 2 minutes
   useEffect(() => {
@@ -505,6 +522,9 @@ export default function Dashboard() {
             ]}
           />
         </div>
+        
+        {/* Development Auth Debug */}
+        <AuthDebug />
       </div>
 
 

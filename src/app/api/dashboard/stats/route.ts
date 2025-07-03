@@ -1,257 +1,194 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/lib/config/supabase-admin';
+import { createAuthenticatedClient } from '@/lib/auth/firebase-server';
+import { adminDb } from '@/lib/config/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: any) {
-            cookieStore.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
+    const { user, error: authError } = await createAuthenticatedClient();
     
-    // Get the current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Session error in dashboard stats:', sessionError);
-      return NextResponse.json({ error: 'Session error' }, { status: 401 });
-    }
-    
-    if (!session?.user?.id) {
-      console.log('No valid session found in dashboard stats');
+    if (authError || !user) {
+      console.log('No valid session found in dashboard stats:', authError);
       return NextResponse.json({ error: 'No session found' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = user.uid;
     console.log('Fetching dashboard stats for userId:', userId);
 
-    // Fetch projects statistics
-    const { data: projects, error: projectsError } = await supabaseAdmin
-      .from('projects')
-      .select('id, status, created_at, updated_at')
-      .eq('user_id', userId);
-    
-    if (projectsError) {
-      console.error('Error fetching projects:', projectsError);
-      // If tables don't exist yet, return mock data
-      if (projectsError.message?.includes('relation') && projectsError.message?.includes('does not exist')) {
-        console.log('Projects table does not exist yet, returning mock data');
-        return NextResponse.json({
-          success: true,
-          stats: {
-            totalProjects: { value: 0, change: 0, label: 'Total Projects' },
-            activeScrapes: { value: 0, change: 0, label: 'Active Scrapes' },
-            dataPoints: { value: 0, change: 0, label: 'Data Points' },
-            successRate: { value: '0%', change: 0, label: 'Success Rate' }
-          },
-          recentActivity: [],
-          toolUsage: {},
-          chartData: [],
-          summary: { activeProjects: 0, totalDataPoints: 0, recentScrapes: 0 }
+    try {
+      // Fetch projects statistics
+      const projectsSnapshot = await adminDb
+        .collection('projects')
+        .where('user_id', '==', userId)
+        .get();
+
+      const projects = projectsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as any[];
+
+      // Fetch project data (scraping results, etc.)
+      const projectDataSnapshot = await adminDb
+        .collection('project_data')
+        .where('project_id', 'in', projects.length > 0 ? projects.map(p => p.id) : ['dummy'])
+        .orderBy('created_at', 'desc')
+        .get();
+
+      const projectData = projectDataSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as any[];
+
+      // Fetch project tools
+      const projectToolsSnapshot = await adminDb
+        .collection('project_tools')
+        .where('project_id', 'in', projects.length > 0 ? projects.map(p => p.id) : ['dummy'])
+        .get();
+
+      const projectTools = projectToolsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as any[];
+
+      // Calculate statistics
+      const now = new Date();
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Total projects
+      const totalProjects = projects.length;
+      const activeProjects = projects.filter(p => p.status === 'active').length;
+      const projectsLast7Days = projects.filter(p => {
+        const createdAt = p.created_at?.toDate ? p.created_at.toDate() : new Date(p.created_at);
+        return createdAt >= last7Days;
+      }).length;
+
+      // Data points (scraping results)
+      const totalDataPoints = projectData.length;
+      const dataPointsLast7Days = projectData.filter(d => {
+        const createdAt = d.created_at?.toDate ? d.created_at.toDate() : new Date(d.created_at);
+        return createdAt >= last7Days;
+      }).length;
+
+      // Active scrapes (recent data entries)
+      const activeScrapes = dataPointsLast7Days;
+
+      // Success rate calculation (assuming successful scrapes have data)
+      const recentScrapes = projectData.filter(d => {
+        const createdAt = d.created_at?.toDate ? d.created_at.toDate() : new Date(d.created_at);
+        return createdAt >= last7Days;
+      });
+      const successfulScrapes = recentScrapes.filter(d => d.data && Object.keys(d.data).length > 0);
+      const successRate = recentScrapes.length > 0 ? Math.round((successfulScrapes.length / recentScrapes.length) * 100) : 0;
+
+      // Tool usage statistics
+      const toolUsage = projectTools.reduce((acc: any, tool: any) => {
+        acc[tool.tool_name] = (acc[tool.tool_name] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Recent activity (last 10 items)
+      const recentActivity = projectData
+        .sort((a, b) => {
+          const dateA = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at);
+          const dateB = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at);
+          return dateB.getTime() - dateA.getTime();
+        })
+        .slice(0, 10)
+        .map((item: any) => ({
+          id: item.id,
+          type: item.data_type || 'data',
+          tool: item.tool_name,
+          project_id: item.project_id,
+          created_at: item.created_at?.toDate ? item.created_at.toDate().toISOString() : item.created_at
+        }));
+
+      // Chart data for the last 30 days
+      const chartData = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const dayData = projectData.filter(d => {
+          const createdAt = d.created_at?.toDate ? d.created_at.toDate() : new Date(d.created_at);
+          return createdAt.toISOString().split('T')[0] === dateStr;
+        });
+
+        chartData.push({
+          date: dateStr,
+          data_points: dayData.length,
+          projects: projects.filter(p => {
+            const createdAt = p.created_at?.toDate ? p.created_at.toDate() : new Date(p.created_at);
+            return createdAt.toISOString().split('T')[0] === dateStr;
+          }).length
         });
       }
-      return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
-    }
 
-    // Fetch project data (scraping results, etc.)
-    const { data: projectData, error: dataError } = await supabaseAdmin
-      .from('project_data')
-      .select(`
-        id, 
-        tool_name, 
-        data_type, 
-        created_at,
-        project_id,
-        projects!inner(user_id)
-      `)
-      .eq('projects.user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (dataError) {
-      console.error('Error fetching project data:', dataError);
-      // If tables don't exist yet, continue with empty data
-      if (dataError.message?.includes('relation') && dataError.message?.includes('does not exist')) {
-        console.log('Project data table does not exist yet, using empty data');
-      } else {
-        return NextResponse.json({ error: 'Failed to fetch project data' }, { status: 500 });
-      }
-    }
+      // Calculate percentage changes (mock data for now)
+      const projectChange = projectsLast7Days > 0 ? Math.round((projectsLast7Days / Math.max(totalProjects - projectsLast7Days, 1)) * 100) : 0;
+      const dataChange = dataPointsLast7Days > 0 ? Math.round((dataPointsLast7Days / Math.max(totalDataPoints - dataPointsLast7Days, 1)) * 100) : 0;
 
-    // Fetch project tools
-    const { data: projectTools, error: toolsError } = await supabaseAdmin
-      .from('project_tools')
-      .select(`
-        id,
-        tool_name,
-        is_enabled,
-        created_at,
-        project_id,
-        projects!inner(user_id)
-      `)
-      .eq('projects.user_id', userId);
-    
-    if (toolsError) {
-      console.error('Error fetching project tools:', toolsError);
-      // If tables don't exist yet, continue with empty data
-      if (toolsError.message?.includes('relation') && toolsError.message?.includes('does not exist')) {
-        console.log('Project tools table does not exist yet, using empty data');
-      } else {
-        return NextResponse.json({ error: 'Failed to fetch project tools' }, { status: 500 });
-      }
-    }
-
-    // Use empty arrays as defaults if data is null or tables don't exist
-    const safeProjects = projects || [];
-    const safeProjectData = projectData || [];
-    const safeProjectTools = projectTools || [];
-
-    // Calculate statistics
-    const now = new Date();
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    // Total projects
-    const totalProjects = safeProjects.length;
-    const activeProjects = safeProjects.filter(p => p.status === 'active').length;
-    const projectsLast7Days = safeProjects.filter(p => new Date(p.created_at) >= last7Days).length;
-
-    // Data points (scraping results)
-    const totalDataPoints = safeProjectData.length;
-    const dataPointsLast7Days = safeProjectData.filter(d => new Date(d.created_at) >= last7Days).length;
-
-    // Active scrapes (recent data entries)
-    const activeScrapes = safeProjectData.filter(d => new Date(d.created_at) >= last7Days).length;
-
-    // Success rate calculation (assuming successful scrapes have data)
-    const recentScrapes = safeProjectData.filter(d => new Date(d.created_at) >= last7Days);
-    const successRate = recentScrapes.length > 0 ? 100 : 0; // Simplified - if we have data, it's successful
-
-    // Tool usage statistics
-    const toolUsage = safeProjectTools.reduce((acc, tool) => {
-      acc[tool.tool_name] = (acc[tool.tool_name] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Recent activity
-    const recentActivity = [
-      ...safeProjects.slice(0, 5).map(p => ({
-        id: p.id,
-        type: 'project_created',
-        message: `Project created`,
-        timestamp: p.created_at,
-        project_id: p.id
-      })),
-      ...safeProjectData.slice(0, 10).map(d => ({
-        id: d.id,
-        type: 'data_scraped',
-        message: `Data scraped with ${d.tool_name}`,
-        timestamp: d.created_at,
-        project_id: d.project_id,
-        tool_name: d.tool_name,
-        data_type: d.data_type
-      }))
-    ]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 15);
-
-    // Calculate changes (comparing last 7 days to previous 7 days)
-    const previous7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const projectsPrevious7Days = safeProjects.filter(p => {
-      const createdAt = new Date(p.created_at);
-      return createdAt >= previous7Days && createdAt < last7Days;
-    }).length;
-
-    const dataPointsPrevious7Days = safeProjectData.filter(d => {
-      const createdAt = new Date(d.created_at);
-      return createdAt >= previous7Days && createdAt < last7Days;
-    }).length;
-
-    // Calculate percentage changes
-    const projectsChange = projectsPrevious7Days > 0 
-      ? Math.round(((projectsLast7Days - projectsPrevious7Days) / projectsPrevious7Days) * 100)
-      : projectsLast7Days > 0 ? 100 : 0;
-
-    const dataPointsChange = dataPointsPrevious7Days > 0
-      ? Math.round(((dataPointsLast7Days - dataPointsPrevious7Days) / dataPointsPrevious7Days) * 100)
-      : dataPointsLast7Days > 0 ? 100 : 0;
-
-    // Chart data for the last 7 days
-    const chartData = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dayStart = new Date(date.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
-      
-      const dayData = safeProjectData.filter(d => {
-        const createdAt = new Date(d.created_at);
-        return createdAt >= dayStart && createdAt <= dayEnd;
-      });
-
-      chartData.push({
-        date: dayStart.toISOString().split('T')[0],
-        scrapes: dayData.length,
-        projects: safeProjects.filter(p => {
-          const createdAt = new Date(p.created_at);
-          return createdAt >= dayStart && createdAt <= dayEnd;
-        }).length
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      stats: {
-        totalProjects: {
-          value: totalProjects,
-          change: projectsChange,
-          label: 'Total Projects'
+      const stats = {
+        totalProjects: { 
+          value: totalProjects, 
+          change: projectChange, 
+          label: 'Total Projects' 
         },
-        activeScrapes: {
-          value: activeScrapes,
-          change: dataPointsChange,
-          label: 'Active Scrapes'
+        activeScrapes: { 
+          value: activeScrapes, 
+          change: dataChange, 
+          label: 'Active Scrapes' 
         },
-        dataPoints: {
-          value: totalDataPoints,
-          change: dataPointsChange,
-          label: 'Data Points'
+        dataPoints: { 
+          value: totalDataPoints, 
+          change: dataChange, 
+          label: 'Data Points' 
         },
-        successRate: {
-          value: `${successRate}%`,
-          change: 0,
-          label: 'Success Rate'
+        successRate: { 
+          value: `${successRate}%`, 
+          change: 0, 
+          label: 'Success Rate' 
         }
-      },
-      recentActivity,
-      toolUsage,
-      chartData,
-      summary: {
-        activeProjects,
-        totalProjects,
-        totalDataPoints,
-        activeScrapes
-      }
-    });
+      };
 
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+      const summary = {
+        activeProjects,
+        totalDataPoints,
+        dataPointsThisWeek: dataPointsLast7Days
+      };
+
+      return NextResponse.json({
+        success: true,
+        stats,
+        recentActivity,
+        toolUsage,
+        chartData,
+        summary
+      });
+
+    } catch (dbError: any) {
+      console.error('Firestore error in dashboard stats:', dbError);
+      // Return mock data if database operations fail
+      return NextResponse.json({
+        success: true,
+        stats: {
+          totalProjects: { value: 0, change: 0, label: 'Total Projects' },
+          activeScrapes: { value: 0, change: 0, label: 'Active Scrapes' },
+          dataPoints: { value: 0, change: 0, label: 'Data Points' },
+          successRate: { value: '0%', change: 0, label: 'Success Rate' }
+        },
+        recentActivity: [],
+        toolUsage: {},
+        chartData: [],
+        summary: { activeProjects: 0, totalDataPoints: 0, dataPointsThisWeek: 0 }
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Error in dashboard stats API:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error.message 
+    }, { status: 500 });
   }
 } 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/config/supabase";
+import { getFirebaseAuth } from "@/lib/config/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loading } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
@@ -27,25 +27,27 @@ function AuthCallbackContent() {
         const maxAttempts = 3;
         
         while (!session && attempts < maxAttempts) {
-          const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-          
-          if (error) {
+          try {
+            const auth = await getFirebaseAuth();
+            const user = auth.currentUser;
+            
+            if (user) {
+              session = { user };
+              console.log('Session found on attempt', attempts + 1, 'for user:', user.email);
+              break;
+            }
+          } catch (error: any) {
             console.error('Auth callback error:', error);
             setError(error.message);
             setStatus('error');
             return;
           }
           
-          if (currentSession?.user) {
-            session = currentSession;
-            break;
-          }
-          
           attempts++;
           console.log(`Attempt ${attempts}/${maxAttempts}: No session found, retrying...`);
           
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
+            await new Promise(resolve => setTimeout(resolve, 500)); // Increase wait time to 500ms
           }
         }
 
@@ -60,30 +62,13 @@ function AuthCallbackContent() {
           
           console.log('Redirecting to:', redirectTo);
           
-          // Immediate redirect - don't wait for user creation
-          window.location.href = redirectTo;
+          // Use router.push with a longer delay to ensure session is properly set
+          setTimeout(() => {
+            router.push(redirectTo);
+            router.refresh(); // Force a refresh to ensure session state is updated
+          }, 1000);
           
-          // Create user record in background (non-blocking)
-          setTimeout(async () => {
-            try {
-              const response = await fetch('/api/auth/create-user', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-              });
-
-              if (!response.ok) {
-                console.warn('Failed to create user record, but auth was successful');
-              } else {
-                console.log('User record created successfully');
-              }
-            } catch (userCreateError) {
-              console.warn('Error creating user record:', userCreateError);
-              // Don't fail the auth process if user creation fails
-            }
-          }, 100); // Minimal delay to ensure redirect happens first
+          // User record will be created automatically when session is fetched
           
         } else {
           console.error('No session found after OAuth callback after all attempts');

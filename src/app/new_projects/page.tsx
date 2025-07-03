@@ -212,7 +212,7 @@ export default function NewProjects() {
                 <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded-md">
                   <p className="text-sm text-red-700 dark:text-red-300">
                     <strong>Database Schema Issue:</strong> It looks like your database is missing required columns. 
-                    Please run the database schema fix in your Supabase dashboard or contact support.
+                    Please check your Firebase configuration or contact support.
                   </p>
                 </div>
               )}
