@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/config/firebase-admin';
 
 // List of allowed origins
 const allowedOrigins = [
@@ -29,13 +28,13 @@ const protectedRoutes = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
-
-  const pathname = request.nextUrl.pathname;
 
   // CORS headers
   const origin = request.headers.get('origin');
@@ -76,36 +75,18 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
   if (isProtectedRoute) {
-    console.log('Checking authentication for protected route:', pathname);
-    try {
-      // Get the Firebase token from cookies
-      const token = request.cookies.get('firebase-token')?.value;
-
-      if (!token) {
-        console.log('No Firebase token found, redirecting to sign-in');
-        return NextResponse.redirect(new URL('/sign-in', request.url));
-      }
-
-      // Verify the Firebase token
-      const decodedToken = await adminAuth.verifyIdToken(token);
-      
-      if (!decodedToken) {
-        console.log('Invalid Firebase token, redirecting to sign-in');
-        return NextResponse.redirect(new URL('/sign-in', request.url));
-      }
-
-      // Token is valid, continue to the requested page
-      console.log('Valid Firebase token for user:', decodedToken.email);
-      return response;
-
-    } catch (error) {
-      console.error('Firebase token verification error:', error);
-      
-      // Clear invalid token and redirect to sign-in
-      const response = NextResponse.redirect(new URL('/sign-in', request.url));
-      response.cookies.delete('firebase-token');
-      return response;
+    // Get the Firebase token from cookies
+    const token = request.cookies.get('firebase-token')?.value;
+    
+    if (!token) {
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('redirectTo', pathname);
+      return NextResponse.redirect(signInUrl);
     }
+
+    // Token is present, allow access
+    // The actual token verification will happen on the client side or in API routes
+    return NextResponse.next();
   }
 
   return response;

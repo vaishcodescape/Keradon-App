@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
 import Groq from 'groq-sdk';
+import { getServerSession } from '@/lib/auth/firebase-server';
+import { ProjectService } from '@/lib/services/project-service';
 
 // Initialize Groq client for LLM capabilities
 const groq = new Groq({
@@ -108,6 +110,35 @@ export async function POST(request: NextRequest) {
         [finalYAxis]: parseFloat(row[finalYAxis]) || 0,
         ...row // Include all original data for tooltips
       })).filter(row => row[finalXAxis] !== null && row[finalXAxis] !== undefined);
+    }
+
+    // Create or update project for the user
+    try {
+      const { user } = await getServerSession();
+      if (user?.uid) {
+        // Create a project for this visualization session
+        const projectName = `VizFin Analysis - ${file.name}`;
+        const projectDescription = `Data visualization analysis of ${file.name} using VizFin`;
+        
+        const project = await ProjectService.createProject({
+          name: projectName,
+          description: projectDescription,
+          user_id: user.uid,
+          category: 'analysis', // default category
+          is_public: false, // default to private
+          tags: [], // default empty tags
+          status: 'active' // default status
+        });
+
+        // Update project with data points (row count as data points)
+        if (project.id) {
+          const dataPoints = parsedData.length;
+          await ProjectService.updateDataScraped(project.id, dataPoints, file.name);
+        }
+      }
+    } catch (projectError) {
+      console.error('Error creating project for VizFin:', projectError);
+      // Don't fail the visualization request if project creation fails
     }
 
     return NextResponse.json({

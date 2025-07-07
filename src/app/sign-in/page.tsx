@@ -76,32 +76,24 @@ function SignInContent() {
     setIsFormLoading(true);
     
     try {
+      // Store redirect destination for auth provider
+      sessionStorage.setItem('authRedirectTo', redirectTo);
+      
       const { data, error } = await FirebaseAuth.signInWithEmail(email, password);
 
       if (error) {
-        console.error("Sign in error:", error);
         setError(error);
+        sessionStorage.removeItem('authRedirectTo'); // Clean up on error
       } else if (data?.user) {
-        toast.success("Signed in successfully! Redirecting...");
-        
-        // Check if Firebase user is available immediately
-        const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
-        if (firebaseUser) {
-          console.log('Firebase user confirmed after email sign-in:', firebaseUser.email);
-          // Redirect immediately - no delay needed
-          router.push(redirectTo);
-          router.refresh();
-        } else {
-          console.warn('Firebase user not immediately available, redirecting anyway');
-          router.push(redirectTo);
-          router.refresh();
-        }
+        toast.success("Signed in successfully!");
+        // Auth provider will handle redirect automatically
       } else {
         setError("Sign in failed. Please try again.");
+        sessionStorage.removeItem('authRedirectTo'); // Clean up on error
       }
     } catch (error) {
-      console.error("Sign in exception:", error);
       setError("An error occurred during sign in");
+      sessionStorage.removeItem('authRedirectTo'); // Clean up on error
     } finally {
       setIsFormLoading(false);
     }
@@ -112,28 +104,30 @@ function SignInContent() {
     setError('');
     
     try {
-      // Store redirect destination for OAuth callback
+      // Store redirect destination for auth provider
       sessionStorage.setItem('authRedirectTo', redirectTo);
-      
-      console.log('Starting Google OAuth, will redirect to:', redirectTo);
       
       const { data, error } = await FirebaseAuth.signInWithGoogle();
       
       if (error) {
-        console.error('Google sign-in error:', error);
         setError(error);
+        sessionStorage.removeItem('authRedirectTo'); // Clean up on error
         setIsGoogleLoading(false);
         return;
       }
       
-      // Google OAuth always uses redirect now
-      console.log('Google OAuth redirect initiated');
-      // The page will redirect automatically, so we don't need to do anything
-      return;
+      if (data?.user) {
+        toast.success("Signed in successfully!");
+        // Auth provider will handle redirect automatically
+      } else {
+        setError("Sign in failed. Please try again.");
+        sessionStorage.removeItem('authRedirectTo'); // Clean up on error
+      }
       
     } catch (err: any) {
-      console.error('Google sign-in error:', err);
       setError(err.message || 'Failed to sign in with Google');
+      sessionStorage.removeItem('authRedirectTo'); // Clean up on error
+    } finally {
       setIsGoogleLoading(false);
     }
   };

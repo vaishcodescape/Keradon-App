@@ -1,24 +1,34 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from '@/lib/hooks/useSession';
 
 export default function Home() {
   const router = useRouter();
-  const { session, loading } = useSession();
+  const pathname = usePathname();
+  const { user, loading } = useSession();
 
   useEffect(() => {
-    if (!loading) {
-      if (session?.user) {
-        // If user is authenticated, redirect to dashboard
+    if (!loading && pathname === '/') {
+      if (user) {
+        // Only redirect to dashboard if we're on the root path
         router.push('/dashboard');
       } else {
-        // If not authenticated, redirect to sign-in
+        // Redirect to sign-in if not authenticated
         router.push('/sign-in');
       }
     }
-  }, [router, session, loading]);
+  }, [router, user, loading, pathname]);
+
+  // Only show loading on root path
+  if (pathname === '/') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return null;
 }

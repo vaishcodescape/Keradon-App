@@ -9,12 +9,26 @@ let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let storageInstance: FirebaseStorage | null = null;
 
+// Cache for configuration check
+let configCheckCache: { result: boolean; timestamp: number } | null = null;
+const CONFIG_CACHE_DURATION = 60000; // 60 seconds (increased from 30)
+
+// Cache for Firebase config data
+let firebaseConfigCache: { config: any; timestamp: number } | null = null;
+const FIREBASE_CONFIG_CACHE_DURATION = 300000; // 5 minutes
+
 // Fetch Firebase configuration securely from API
 async function getFirebaseConfig() {
   try {
     // Only fetch from API in browser environment
     if (typeof window === 'undefined') {
       throw new Error('Firebase config can only be fetched in browser environment');
+    }
+    
+    // Check cache first
+    const now = Date.now();
+    if (firebaseConfigCache && (now - firebaseConfigCache.timestamp) < FIREBASE_CONFIG_CACHE_DURATION) {
+      return firebaseConfigCache.config;
     }
     
     const response = await fetch('/api/firebase-config');
@@ -29,9 +43,12 @@ async function getFirebaseConfig() {
     
     // Remove the configured flag before returning
     const { configured, ...firebaseConfig } = config;
+    
+    // Cache the config
+    firebaseConfigCache = { config: firebaseConfig, timestamp: now };
+    
     return firebaseConfig;
   } catch (error) {
-    console.error('Error fetching Firebase config:', error);
     throw error;
   }
 }
@@ -40,12 +57,16 @@ async function getFirebaseConfig() {
 async function initializeFirebaseApp(): Promise<FirebaseApp> {
   if (app) return app;
 
+  // Only initialize in browser environment
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase can only be initialized in browser environment');
+  }
+
   try {
     const firebaseConfig = await getFirebaseConfig();
     app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
     return app;
   } catch (error) {
-    console.error('Failed to initialize Firebase app:', error);
     throw error;
   }
 }
@@ -122,12 +143,32 @@ export const storage = typeof window !== 'undefined' ? getFirebaseStorage() : nu
 
 // Check if Firebase is configured without throwing errors
 export async function isFirebaseConfigured(): Promise<boolean> {
+  // Return false in server environment
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  
+  // Check cache first
+  const now = Date.now();
+  if (configCheckCache && (now - configCheckCache.timestamp) < CONFIG_CACHE_DURATION) {
+    return configCheckCache.result;
+  }
+  
   try {
     const response = await fetch('/api/firebase-config');
-    if (!response.ok) return false;
+    if (!response.ok) {
+      configCheckCache = { result: false, timestamp: now };
+      return false;
+    }
     const config = await response.json();
-    return config.configured === true;
-  } catch {
+    const isConfigured = config.configured === true;
+    
+    // Cache the result
+    configCheckCache = { result: isConfigured, timestamp: now };
+    
+    return isConfigured;
+  } catch (error) {
+    configCheckCache = { result: false, timestamp: now };
     return false;
   }
 }

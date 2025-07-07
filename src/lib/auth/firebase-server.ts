@@ -16,15 +16,31 @@ export async function createAuthenticatedClient() {
     }
 
     // Verify the token
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    
-    return {
-      user: decodedToken,
-      session: { access_token: token },
-      error: null,
-    };
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      
+      return {
+        user: decodedToken,
+        session: { access_token: token },
+        error: null,
+      };
+    } catch (verifyError: any) {
+      // Handle specific Firebase Admin errors
+      if (verifyError.code === 'auth/invalid-credential') {
+        return {
+          user: null,
+          session: null,
+          error: 'Firebase Admin not properly configured',
+        };
+      }
+      
+      return {
+        user: null,
+        session: null,
+        error: verifyError.message,
+      };
+    }
   } catch (error: any) {
-    console.error('Auth verification error:', error);
     return {
       user: null,
       session: null,
@@ -45,10 +61,18 @@ export async function getServerSession(): Promise<{
       return { user: null, error: 'No token found' };
     }
 
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    return { user: decodedToken, error: null };
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      return { user: decodedToken, error: null };
+    } catch (verifyError: any) {
+      // Handle specific Firebase Admin errors
+      if (verifyError.code === 'auth/invalid-credential') {
+        return { user: null, error: 'Firebase Admin not properly configured' };
+      }
+      
+      return { user: null, error: verifyError.message };
+    }
   } catch (error: any) {
-    console.error('Server session error:', error);
     return { user: null, error: error.message };
   }
 } 

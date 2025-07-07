@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import Groq from 'groq-sdk';
+import { getServerSession } from '@/lib/auth/firebase-server';
+import { ProjectService } from '@/lib/services/project-service';
 
 // Initialize Groq client for AI-enhanced scraping
 const groq = new Groq({
@@ -392,7 +394,7 @@ function calculateSEOHealthScore($: cheerio.CheerioAPI, meta: any, headings: any
       lastAnalyzed: new Date().toISOString()
     };
   } catch (error) {
-    console.warn('Error calculating SEO health score:', error);
+    console.error('Error calculating SEO health score:', error);
     return {
       overallScore: 0,
       maxPossibleScore: 100,
@@ -538,7 +540,7 @@ function extractPriceAlertData($: cheerio.CheerioAPI, allText: string): any {
       lastScanned: new Date().toISOString()
     };
   } catch (error) {
-    console.warn('Error extracting price alert data:', error);
+    console.error('Error extracting price alert data:', error);
     return {
       currentPrices: [],
       discounts: [],
@@ -683,7 +685,7 @@ function analyzeContentBlueprint($: cheerio.CheerioAPI, allText: string, heading
 
     return blueprint;
   } catch (error) {
-    console.warn('Error analyzing content blueprint:', error);
+    console.error('Error analyzing content blueprint:', error);
     return {
       contentTypes: {},
       contentVolume: {},
@@ -1287,7 +1289,7 @@ function extractBusinessData($: cheerio.CheerioAPI, allText: string) {
 
     return businessData;
   } catch (error) {
-    console.warn('Error extracting business data:', error);
+    console.error('Error extracting business data:', error);
     return {
       companyName: '',
       industry: '',
@@ -1371,7 +1373,7 @@ function extractTechnicalData($: cheerio.CheerioAPI, html: string) {
 
     return techData;
   } catch (error) {
-    console.warn('Error extracting technical data:', error);
+    console.error('Error extracting technical data:', error);
     return {
       technologies: [],
       frameworks: [],
@@ -1515,7 +1517,7 @@ function extractContentData($: cheerio.CheerioAPI, allText: string) {
 
     return contentData;
   } catch (error) {
-    console.warn('Error extracting content data:', error);
+    console.error('Error extracting content data:', error);
     return {
       forms: [],
       tables: [],
@@ -1580,7 +1582,7 @@ function extractAdvancedPatterns(allText: string) {
 
     return patterns;
   } catch (error) {
-    console.warn('Error extracting advanced patterns:', error);
+    console.error('Error extracting advanced patterns:', error);
     return {
       coordinates: [],
       ipAddresses: [],
@@ -2272,6 +2274,35 @@ export async function POST(request: NextRequest) {
       default:
         formattedData = enhancedData;
         break;
+    }
+
+    // Create or update project for the user
+    try {
+      const { user } = await getServerSession();
+      if (user?.uid) {
+        // Create a project for this scraping session
+        const projectName = `DataShark Analysis - ${new URL(url).hostname}`;
+        const projectDescription = `Web scraping analysis of ${url} using DataShark AI`;
+        
+        const project = await ProjectService.createProject({
+          name: projectName,
+          description: projectDescription,
+          user_id: user.uid,
+          category: 'analysis', // default category
+          is_public: false, // default to private
+          tags: [], // default empty tags
+          status: 'active' // default status
+        });
+
+        // Update project with data scraped count
+        if (project.id) {
+          const dataPoints = metadata.elementsFound || 0;
+          await ProjectService.updateDataScraped(project.id, dataPoints, url);
+        }
+      }
+    } catch (projectError) {
+      console.error('Error creating project for DataShark:', projectError);
+      // Don't fail the scraping request if project creation fails
     }
 
     const result: ScrapeResult = {

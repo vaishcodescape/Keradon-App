@@ -3,7 +3,9 @@
  * Provides easy-to-use functions for interacting with the QueryHammerhead API (powered by Groq)
  */
 
-export type QueryMode = 'analysis' | 'research' | 'code' | 'creative' | 'debug' | 'optimization';
+import { toolsApi } from "@/lib/api-client";
+
+export type QueryMode = 'analysis' | 'research' | 'code' | 'creative' | 'optimization';
 
 export type GroqModel = 
   // Production models
@@ -78,20 +80,8 @@ export class QueryHammerheadClient {
         model: request.model || this.defaultModel,
       };
 
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestWithDefaults),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: QueryResponse = await response.json();
-      return data;
+      const result = await toolsApi.queryhammerhead.query(requestWithDefaults);
+      return result;
     } catch (error) {
       return {
         success: false,
@@ -110,16 +100,8 @@ export class QueryHammerheadClient {
    */
   async getInfo(): Promise<QueryHammerheadInfo | null> {
     try {
-      const response = await fetch(this.baseUrl, {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: QueryHammerheadInfo = await response.json();
-      return data;
+      const result = await toolsApi.queryhammerhead.getInfo();
+      return result.success ? result.data : null;
     } catch (error) {
       console.error('Failed to get QueryHammerhead info:', error);
       return null;
@@ -182,17 +164,7 @@ export class QueryHammerheadClient {
     });
   }
 
-  /**
-   * Debug and troubleshoot issues
-   */
-  async debug(query: string, context?: string, model?: GroqModel): Promise<QueryResponse> {
-    return this.query({
-      query,
-      mode: 'debug',
-      context,
-      model: model || this.defaultModel,
-    });
-  }
+
 
   /**
    * Optimize performance and processes
@@ -220,7 +192,7 @@ export const qh = {
   research: (query: string, context?: string, model?: GroqModel) => queryHammerhead.research(query, context, model),
   code: (query: string, context?: string, model?: GroqModel) => queryHammerhead.code(query, context, model),
   creative: (query: string, context?: string, model?: GroqModel) => queryHammerhead.creative(query, context, model),
-  debug: (query: string, context?: string, model?: GroqModel) => queryHammerhead.debug(query, context, model),
+
   optimize: (query: string, context?: string, model?: GroqModel) => queryHammerhead.optimize(query, context, model),
   query: (request: QueryRequest) => queryHammerhead.query(request),
   info: () => queryHammerhead.getInfo(),

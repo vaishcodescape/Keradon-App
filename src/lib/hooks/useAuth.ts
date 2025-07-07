@@ -25,6 +25,12 @@ export function useAuth(): UseAuthReturn {
       setLoading(true);
       setError(null);
       
+      // Only run Firebase operations in browser environment
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
+      
       // Check if Firebase is configured first
       const configured = await isFirebaseConfigured();
       if (!configured) {
@@ -39,7 +45,6 @@ export function useAuth(): UseAuthReturn {
       const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
       
       if (firebaseUser) {
-        console.log('useAuth: Firebase user found:', firebaseUser.email);
         
         // Get user data from Firestore
         const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
@@ -53,7 +58,6 @@ export function useAuth(): UseAuthReturn {
           setUser(authSession?.user || null);
         }
       } else {
-        console.log('useAuth: No Firebase user found');
         setSession(null);
         setUser(null);
       }
@@ -106,14 +110,16 @@ export function useAuth(): UseAuthReturn {
     // Listen for Firebase auth state changes
     const setupAuthListener = async () => {
       try {
+        // Only set up auth listener in browser environment
+        if (typeof window === 'undefined') {
+          return () => {};
+        }
+        
         const auth = await getFirebaseAuth();
         
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-          console.log('useAuth: Firebase auth state changed:', firebaseUser?.email || 'No user');
-          
           if (firebaseUser) {
             // User signed in
-            console.log('useAuth: User signed in:', firebaseUser.email);
             
             // Get user data from Firestore
             const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
@@ -128,7 +134,6 @@ export function useAuth(): UseAuthReturn {
             }
           } else {
             // User signed out
-            console.log('useAuth: User signed out');
             setSession(null);
             setUser(null);
             setError(null);
@@ -139,7 +144,6 @@ export function useAuth(): UseAuthReturn {
         
         return unsubscribe;
       } catch (error) {
-        console.error('useAuth: Error setting up Firebase auth listener:', error);
         return () => {};
       }
     };

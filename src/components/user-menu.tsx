@@ -12,18 +12,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, Settings } from "lucide-react";
-import { useSession } from "@/lib/hooks/useSession";
+import { useAuthContext } from "@/components/session-provider";
+import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import Link from "next/link";
 import { toast } from "sonner";
 
 export function UserMenu() {
-  const { user, signOut, loading } = useSession();
+  const { user, loading } = useAuthContext();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOut();
+      await FirebaseAuth.signOut();
       toast.success("Signed out successfully");
     } catch (error) {
       console.error("Sign out error:", error);
@@ -68,9 +69,9 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.avatar_url} alt={user.name} />
+            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || ''} />
             <AvatarFallback className="text-xs">
-              {getInitials(user.name)}
+              {getInitials(user.displayName || user.email || '')}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -78,7 +79,7 @@ export function UserMenu() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>

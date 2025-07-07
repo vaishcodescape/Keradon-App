@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { adminAuth } from '@/lib/config/firebase-admin';
 
 export async function GET() {
   try {
@@ -12,47 +13,47 @@ export async function GET() {
       appId: process.env.FIREBASE_APP_ID,
     };
 
-    // Detailed logging for debugging
-    console.log('Firebase Environment Variables Check:');
-    console.log('FIREBASE_API_KEY:', process.env.FIREBASE_API_KEY ? 'SET' : 'MISSING');
-    console.log('FIREBASE_AUTH_DOMAIN:', process.env.FIREBASE_AUTH_DOMAIN ? 'SET' : 'MISSING');
-    console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING');
-    console.log('FIREBASE_STORAGE_BUCKET:', process.env.FIREBASE_STORAGE_BUCKET ? 'SET' : 'MISSING');
-    console.log('FIREBASE_MESSAGING_SENDER_ID:', process.env.FIREBASE_MESSAGING_SENDER_ID ? 'SET' : 'MISSING');
-    console.log('FIREBASE_APP_ID:', process.env.FIREBASE_APP_ID ? 'SET' : 'MISSING');
-
     // Validate all required fields are present
     const missingFields = Object.entries(config)
       .filter(([_, value]) => !value)
       .map(([key]) => key);
 
     if (missingFields.length > 0) {
-      console.warn('Firebase environment variables not found:', missingFields);
       return NextResponse.json(
         { 
           error: 'Firebase not configured',
           message: 'Please check your .env.local file contains all Firebase environment variables',
           missingFields,
-          configured: false,
-          debug: {
-            FIREBASE_API_KEY: process.env.FIREBASE_API_KEY ? 'SET' : 'MISSING',
-            FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN ? 'SET' : 'MISSING',
-            FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
-            FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET ? 'SET' : 'MISSING',
-            FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID ? 'SET' : 'MISSING',
-            FIREBASE_APP_ID: process.env.FIREBASE_APP_ID ? 'SET' : 'MISSING'
-          }
+          configured: false
         },
         { status: 200 } // Return 200 instead of 500 to avoid breaking the app
       );
     }
 
+    // Test Firebase Admin connection (optional - don't fail if it doesn't work)
+    let adminStatus = 'unknown';
+    try {
+      // This will throw an error if Firebase Admin is not properly configured
+      await adminAuth.listUsers(1);
+      adminStatus = 'working';
+    } catch (adminError: any) {
+      // If it's a permissions error, that's expected for basic config
+      // If it's a configuration error, we should report it
+      if (adminError.code === 'auth/insufficient-permission') {
+        adminStatus = 'limited';
+      } else if (adminError.code === 'auth/invalid-credential') {
+        adminStatus = 'no-credentials';
+      } else {
+        adminStatus = 'error';
+      }
+    }
+
     return NextResponse.json({
       ...config,
-      configured: true
+      configured: true,
+      adminStatus
     });
   } catch (error) {
-    console.error('Error getting Firebase config:', error);
     return NextResponse.json(
       { 
         error: 'Failed to get Firebase configuration',
