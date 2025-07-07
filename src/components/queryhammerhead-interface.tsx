@@ -66,15 +66,7 @@ export function QueryHammerheadInterface() {
             "Suggest interactive chart types for customer analytics portal"
           ]
         };
-      case 'debug':
-        return {
-          placeholder: "Identify data quality issues and problems. e.g., 'Find missing values and inconsistencies', 'Detect outliers and anomalies', 'Validate data integrity across systems'",
-          examples: [
-            "Identify data quality issues and missing value patterns",
-            "Detect anomalies in transaction data that might indicate fraud",
-            "Validate data consistency across multiple data sources"
-          ]
-        };
+
       case 'optimization':
         return {
           placeholder: "Optimize queries, processes, and performance. e.g., 'Improve database query performance', 'Optimize data pipeline efficiency', 'Reduce report generation time'",
@@ -236,7 +228,6 @@ export function QueryHammerheadInterface() {
               <SelectItem value="research">Research</SelectItem>
               <SelectItem value="code">Code</SelectItem>
               <SelectItem value="creative">Creative</SelectItem>
-              <SelectItem value="debug">Debug</SelectItem>
               <SelectItem value="optimization">Optimization</SelectItem>
             </SelectContent>
           </Select>

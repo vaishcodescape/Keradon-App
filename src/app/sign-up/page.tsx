@@ -64,7 +64,6 @@ export default function SignUp() {
           }
         } else {
           // If API fails, don't show error to user, just reset status
-          console.warn('User check API failed:', data.error);
           setEmailStatus('idle');
           setEmailMessage("");
         }
@@ -128,7 +127,6 @@ export default function SignUp() {
       const { data, error } = await FirebaseAuth.signUpWithEmail(email, password, name);
 
       if (error) {
-        console.error("Sign up error:", error);
         if (error.includes("auth/email-already-in-use") || error.includes("User already registered")) {
           toast.error("An account with this email already exists. Please sign in instead.", {
             duration: 5000,
@@ -156,7 +154,6 @@ export default function SignUp() {
         toast.error("Sign up failed. Please try again.");
       }
     } catch (error) {
-      console.error("Sign up exception:", error);
       toast.error("An error occurred during sign up");
     } finally {
       setIsFormLoading(false);
@@ -170,15 +167,14 @@ export default function SignUp() {
       const { data, error } = await FirebaseAuth.signInWithGoogle();
 
       if (error) {
-        console.error("Google sign up error:", error);
-        toast.error("Failed to sign up with Google. Please try again.");
+        toast.error(error);
+      } else if (data?.user) {
+        toast.success("Account created successfully!");
+        router.push('/dashboard');
       } else {
-        // Google OAuth always uses redirect now
-        console.log("Google OAuth redirect initiated");
-        // The redirect will happen automatically
+        toast.error("Failed to sign up with Google. Please try again.");
       }
     } catch (error) {
-      console.error("Google sign up exception:", error);
       toast.error("An error occurred during Google sign up");
     } finally {
       setIsGoogleLoading(false);

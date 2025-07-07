@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FirebaseAuth } from "@/lib/auth/firebase-auth";
-import { getFirebaseAuth } from "@/lib/config/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loading } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
@@ -11,132 +10,74 @@ import Link from "next/link";
 import { AlertCircle, CheckCircle } from "lucide-react";
 
 function AuthCallbackContent() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'redirecting'>('loading');
+  const [error, setError] = useState<string>('');
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        console.log('Callback page loaded, processing authentication...');
-        console.log('Current URL:', window.location.href);
-        console.log('URL search params:', window.location.search);
+        // Check for error in URL params first
+        const errorParam = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
         
+        if (errorParam) {
+          setError(errorDescription || errorParam);
+          setStatus('error');
+          return;
+        }
+
         // Handle redirect result from OAuth
         const { data: redirectResult, error: redirectError } = await FirebaseAuth.handleRedirectResult();
         
         if (redirectError) {
-          console.error('Redirect result error:', redirectError);
           setError(redirectError);
           setStatus('error');
           return;
         }
         
         if (redirectResult) {
-          console.log('OAuth redirect successful for user:', redirectResult.user.email);
-          setStatus('success');
-          
-          // Double-check that the user is actually authenticated
-          const auth = await getFirebaseAuth();
-          console.log('Current auth user after redirect:', auth.currentUser?.email || 'No user');
-          
-          // Get redirect destination from session storage or default to dashboard
-          const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
-          sessionStorage.removeItem('authRedirectTo'); // Clean up
-          
-          console.log('Redirecting to:', redirectTo);
-          
-          // Redirect immediately - no delay needed
-          try {
-            router.push(redirectTo);
-            router.refresh(); // Force a refresh to ensure session state is updated
-          } catch (routerError) {
-            console.warn('Router push failed, using window.location:', routerError);
-            // Fallback to window.location if router fails
-            window.location.href = redirectTo;
-          }
-          
-          // Force redirect after 2 seconds if still on this page
+          setStatus('redirecting');
+          // Redirect to dashboard or intended page after a short delay
           setTimeout(() => {
-            if (window.location.pathname === '/auth/callback') {
-              console.log('Forcing redirect to:', redirectTo);
-              window.location.href = redirectTo;
-            }
-          }, 2000);
-          
+            const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
+            sessionStorage.removeItem('authRedirectTo');
+            window.location.replace(redirectTo);
+          }, 800);
           return;
         }
         
-        // If no redirect result, try to get current Firebase user
-        const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
+        setError('No authentication result found. Please try signing in again.');
+        setStatus('error');
         
-        if (firebaseUser) {
-          console.log('Firebase user found after redirect:', firebaseUser.email);
-          setStatus('success');
-          
-          // Get redirect destination from session storage or default to dashboard
-          const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
-          sessionStorage.removeItem('authRedirectTo'); // Clean up
-          
-          console.log('Redirecting to:', redirectTo);
-          
-          // Redirect immediately - no delay needed
-          try {
-            router.push(redirectTo);
-            router.refresh();
-          } catch (routerError) {
-            console.warn('Router push failed, using window.location:', routerError);
-            // Fallback to window.location if router fails
-            window.location.href = redirectTo;
-          }
-          
-          // Force redirect after 2 seconds if still on this page
-          setTimeout(() => {
-            if (window.location.pathname === '/auth/callback') {
-              console.log('Forcing redirect to:', redirectTo);
-              window.location.href = redirectTo;
-            }
-          }, 2000);
-        } else {
-          console.error('No Firebase user found after OAuth callback');
-          setError('Authentication session could not be established. Please try signing in again.');
-          setStatus('error');
-        }
       } catch (err: any) {
-        console.error('Callback handling error:', err);
         setError(err.message || 'An unexpected error occurred');
         setStatus('error');
       }
     };
 
-    // Check for error in URL params first
-    const errorParam = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
-    
-    if (errorParam) {
-      console.error('OAuth error in URL:', errorParam, errorDescription);
-      setError(errorDescription || errorParam);
-      setStatus('error');
-      return;
-    }
-
-    // Process immediately - no delay needed
+    // Process immediately
     handleAuthCallback();
-  }, [router, searchParams]);
+  }, [searchParams]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'redirecting') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-[400px]">
           <CardHeader className="text-center">
-            <CardTitle>Completing Sign In</CardTitle>
-            <CardDescription>Please wait while we sign you in...</CardDescription>
+            <CardTitle>{status === 'redirecting' ? 'Redirecting...' : 'Completing Sign In'}</CardTitle>
+            <CardDescription>
+              {status === 'redirecting'
+                ? 'You are being redirected to your dashboard...'
+                : 'Please wait while we sign you in...'}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
             <Loading size={32} />
             <p className="text-sm text-muted-foreground">
-              This should only take a moment
+              {status === 'redirecting'
+                ? 'This should only take a moment'
+                : 'This should only take a moment'}
             </p>
           </CardContent>
         </Card>

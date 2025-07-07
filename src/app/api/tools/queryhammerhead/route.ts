@@ -2,10 +2,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { getServerSession } from '@/lib/auth/firebase-server';
+import { ProjectService } from '@/lib/services/project-service';
 
 interface QueryRequest {
   query: string;
-  mode: 'analysis' | 'research' | 'code' | 'creative' | 'debug' | 'optimization';
+  mode: 'analysis' | 'research' | 'code' | 'creative' | 'optimization';
   context?: string;
   temperature?: number;
   maxTokens?: number;
@@ -49,11 +51,7 @@ const SYSTEM_PROMPTS = {
 - Create engaging and compelling content
 - Provide multiple creative alternatives`,
 
-  debug: `You are QueryHammerhead, a debugging specialist and troubleshooting expert. Your role is to:
-- Systematically identify and diagnose issues
-- Provide step-by-step debugging approaches
-- Suggest multiple potential solutions
-- Explain the root cause of problems clearly`,
+
 
   optimization: `You are QueryHammerhead, a performance optimization expert. Your role is to:
 - Analyze systems and processes for improvement opportunities
@@ -158,6 +156,35 @@ export async function POST(request: NextRequest) {
 
     // Extract response text
     const responseText = chatCompletion.choices[0]?.message?.content || 'No response generated';
+
+    // Create or update project for the user
+    try {
+      const { user } = await getServerSession();
+      if (user?.uid) {
+        // Create a project for this query session
+        const projectName = `QueryHammerhead ${body.mode.charAt(0).toUpperCase() + body.mode.slice(1)} - ${body.query.substring(0, 30)}${body.query.length > 30 ? '...' : ''}`;
+        const projectDescription = `${body.mode} query using QueryHammerhead AI`;
+        
+        const project = await ProjectService.createProject({
+          name: projectName,
+          description: projectDescription,
+          user_id: user.uid,
+          category: 'analysis', // default category
+          is_public: false, // default to private
+          tags: [], // default empty tags
+          status: 'active' // default status
+        });
+
+        // Update project with data points (tokens used as data points)
+        if (project.id) {
+          const dataPoints = chatCompletion.usage?.total_tokens || 0;
+          await ProjectService.updateDataScraped(project.id, dataPoints, 'QueryHammerhead');
+        }
+      }
+    } catch (projectError) {
+      console.error('Error creating project for QueryHammerhead:', projectError);
+      // Don't fail the query request if project creation fails
+    }
 
     const response: QueryResponse = {
       success: true,

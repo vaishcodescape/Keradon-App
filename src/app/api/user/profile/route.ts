@@ -7,11 +7,8 @@ export async function GET(request: Request) {
     const { user, error: authError } = await createAuthenticatedClient();
     
     if (authError || !user) {
-      console.log('No session found in profile API:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('Profile API: Fetching profile for user:', user.email);
 
     try {
       // Try to get user from Firestore
@@ -34,7 +31,6 @@ export async function GET(request: Request) {
           two_factor_enabled: userData?.two_factor_enabled || false
         });
       } else {
-        console.log('User not found in Firestore, returning default data');
         // Return default user data from Firebase Auth
         return NextResponse.json({
           id: user.uid,
@@ -52,7 +48,6 @@ export async function GET(request: Request) {
         });
       }
     } catch (dbError: any) {
-      console.warn('Firestore error fetching profile:', dbError.message);
       // Return default data if database error
       return NextResponse.json({
         id: user.uid,
@@ -70,7 +65,6 @@ export async function GET(request: Request) {
       });
     }
   } catch (error: any) {
-    console.error('Profile API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -80,11 +74,8 @@ export async function PUT(request: Request) {
     const { user, error: authError } = await createAuthenticatedClient();
     
     if (authError || !user) {
-      console.log('No session found in profile update API:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('Profile Update API: Updating profile for user:', user.email);
 
     const body = await request.json();
     const { name, role, compact_mode, email_notifications, push_notifications, two_factor_enabled } = body;
@@ -123,7 +114,6 @@ export async function PUT(request: Request) {
       });
 
     } catch (dbError: any) {
-      console.warn('Firestore error updating profile:', dbError.message);
       // Return updated data even if database update failed
       return NextResponse.json({
         id: user.uid,
@@ -141,7 +131,6 @@ export async function PUT(request: Request) {
       });
     }
   } catch (error: any) {
-    console.error('Profile update API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

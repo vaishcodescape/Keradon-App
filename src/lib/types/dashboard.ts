@@ -5,46 +5,47 @@ export interface DashboardStat {
 }
 
 export interface DashboardStats {
-  totalProjects: DashboardStat;
-  activeScrapes: DashboardStat;
-  dataPoints: DashboardStat;
-  successRate: DashboardStat;
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  totalDataScraped: number;
+  dataScrapedThisMonth: number;
+  toolsUsed: number;
+  lastActivity: string;
 }
 
 export interface RecentActivity {
   id: string;
-  type: 'project_created' | 'data_scraped' | 'tool_enabled' | 'project_updated';
-  message: string;
+  type: 'project_created' | 'data_scraped' | 'tool_used' | 'project_updated';
+  title: string;
+  description: string;
   timestamp: string;
-  project_id?: string;
-  tool_name?: string;
-  data_type?: string;
+  userId: string;
+  projectId?: string;
+  metadata?: any;
 }
 
-export interface ToolUsage {
-  [toolName: string]: number;
+export interface QuickStats {
+  projectsThisWeek: number;
+  dataScrapedToday: number;
+  toolsActive: number;
+  averageProjectTime: string;
 }
 
 export interface ChartDataPoint {
   date: string;
-  scrapes: number;
-  projects: number;
+  count?: number;
+  amount?: number;
 }
 
-export interface DashboardSummary {
-  activeProjects: number;
-  totalProjects: number;
-  totalDataPoints: number;
-  activeScrapes: number;
-  projectsThisWeek: number;
-  dataPointsThisWeek: number;
+export interface ChartData {
+  projectsOverTime: ChartDataPoint[];
+  dataScrapedOverTime: ChartDataPoint[];
 }
 
 export interface DashboardData {
-  success: boolean;
   stats: DashboardStats;
-  recentActivity: RecentActivity[];
-  toolUsage: ToolUsage;
-  chartData: ChartDataPoint[];
-  summary: DashboardSummary;
+  recentActivities: RecentActivity[];
+  projectsOverTime: ChartDataPoint[];
+  quickStats: QuickStats;
 } 

@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { IconHome, IconSettings, IconChartBar, IconTools,IconFolder } from "@tabler/icons-react";
 import { UserMenu } from "@/components/user-menu";
-import { useSession } from "@/lib/hooks/useSession";
+import { useAuthContext } from "@/components/session-provider";
 import { DashboardData, RecentActivity } from "@/lib/types/dashboard";
-import { AuthDebug } from "@/components/auth-debug";
+import { dashboardApi } from "@/lib/api-client";
 
 export default function Dashboard() {
   const [isVisible, setIsVisible] = useState(false);
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { session, loading: sessionLoading, refreshSession } = useSession();
+  const { user, loading: authLoading } = useAuthContext();
 
   const routes = [
     { name: 'Overview', path: '/dashboard' },
@@ -34,60 +34,23 @@ export default function Dashboard() {
     { name: 'Settings', path: '/settings' }
   ];
 
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async (retry = false) => {
-    if (!session?.user?.id) {
-      console.log('No user session, skipping dashboard data fetch');
-      setLoading(false);
-      return;
-    }
-    
-    // Prevent multiple concurrent requests
-    if (loading && !retry) return;
-    
+  const fetchDashboardData = useCallback(async () => {
     try {
       setError('');
-      console.log('Fetching dashboard data for user:', session.user.id);
-      
-      const response = await fetch('/api/dashboard/stats', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.status === 401) {
-        console.log('Unauthorized response, attempting session refresh');
-        // Try to refresh session once if unauthorized
-        if (!retry && refreshSession) {
-          await refreshSession();
-          // Wait a bit for session to refresh before retrying
-          setTimeout(() => fetchDashboardData(true), 1000);
-        } else {
-          setError('You are not authenticated. Please sign in again.');
-        }
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('Dashboard data response:', data);
-      
-      if (data.success) {
-        setDashboardData(data);
+      const response = await dashboardApi.getStats();
+      if (response.success) {
+        setDashboardData(response.data);
       } else {
-        setError(data.error || 'Failed to fetch dashboard data');
+        setError(response.error || 'Failed to fetch dashboard data');
       }
-    } catch (err) {
-      const errorMessage = 'Failed to load dashboard data';
-      if (dashboardData === null) {
-        setError(errorMessage);
-      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch dashboard data');
       console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [session?.user?.id, dashboardData, refreshSession, loading]);
+  }, []);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -121,43 +84,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     setMounted(true);
-    // Add a small delay to ensure the initial state is rendered
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-    return () => clearTimeout(timer);
+    // Immediate visibility for faster perceived loading
+    setIsVisible(true);
   }, []);
 
   useEffect(() => {
-    if (session?.user?.id && mounted) {
-      console.log('Session available, fetching dashboard data');
-      // Add a small delay to ensure session is fully established
-      setTimeout(() => {
-        fetchDashboardData();
-      }, 500);
-    } else if (mounted && !sessionLoading && !session?.user?.id) {
-      console.log('No session found after loading completed');
+    if (user?.uid && mounted) {
+      // Start loading immediately when user is available
+      fetchDashboardData();
+    } else if (mounted && !authLoading && !user?.uid) {
       setLoading(false);
     }
-  }, [session?.user?.id, mounted, sessionLoading, fetchDashboardData]);
+  }, [user?.uid, mounted, authLoading, fetchDashboardData]);
 
-  // Auto-refresh every 2 minutes
+  // Reduced auto-refresh interval for better performance
   useEffect(() => {
-    if (!session?.user?.id || !dashboardData) return;
+    if (!user?.uid || !dashboardData) return;
     
     const interval = setInterval(() => {
-      // Only refresh if we still have a valid session
-      if (session?.user?.id) {
+      if (user?.uid) {
         fetchDashboardData();
       }
-    }, 120000); // 2 minutes instead of 1 minute
+    }, 600000); // 10 minutes instead of 5
     
     return () => clearInterval(interval);
-  }, [session?.user?.id, dashboardData, fetchDashboardData]);
+  }, [user?.uid, dashboardData, fetchDashboardData]);
 
-
-
-  if (!mounted || sessionLoading) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -165,7 +118,7 @@ export default function Dashboard() {
     );
   }
 
-  if ((!session || !session.user?.id) && !sessionLoading) {
+  if ((!user || !user.uid) && !authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-96">
@@ -193,6 +146,60 @@ export default function Dashboard() {
     );
   }
 
+  if (loading || !dashboardData) {
+    return (
+      <main className="min-h-screen bg-background relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)]" />
+        
+        <div className="p-8 relative">
+          {/* Header Skeleton */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Stats Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-card/80 backdrop-blur-xl border border-border rounded-lg p-6">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
+                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-card/80 backdrop-blur-xl border border-border rounded-lg p-6">
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-6"></div>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-lg p-6">
+              <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-6"></div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background relative overflow-hidden">
       {/* Background Pattern */}
@@ -204,7 +211,7 @@ export default function Dashboard() {
         {error && dashboardData && (
           <div className={cn(
             "mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg",
-            "transition-all duration-500 ease-out",
+            "transition-all duration-300 ease-out",
             isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
           )}>
             <div className="flex items-center justify-between">
@@ -227,15 +234,15 @@ export default function Dashboard() {
         {/* Header */}
         <header className={cn(
           "flex justify-between items-center mb-8",
-          "transition-all duration-500 ease-out",
+          "transition-all duration-300 ease-out",
           isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
         )}>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            {session?.user && (
+            {user && (
               <div>
                 <p className="text-muted-foreground mt-1">
-                  Welcome back, {session.user.name || session.user.email}!
+                  Welcome back, {user.displayName || user.email}!
                 </p>
                 {dashboardData && (
                   <p className="text-xs text-muted-foreground/70 mt-1">
@@ -269,7 +276,7 @@ export default function Dashboard() {
             </Button>
             <Button 
               className={cn(
-                "bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl",
+                "bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-lg hover:shadow-xl",
                 isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
               )}
               onClick={() => router.push('/new_projects')}
@@ -282,16 +289,41 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {dashboardData && Object.entries(dashboardData.stats).map(([key, stat], index) => (
+          {[
+            { 
+              key: 'totalProjects', 
+              label: 'Total Projects', 
+              value: dashboardData?.stats?.totalProjects || 0, 
+              change: 12 
+            },
+            { 
+              key: 'activeProjects', 
+              label: 'Active Projects', 
+              value: dashboardData?.stats?.activeProjects || 0, 
+              change: 8 
+            },
+            { 
+              key: 'totalDataScraped', 
+              label: 'Data Scraped', 
+              value: (dashboardData?.stats?.totalDataScraped || 0).toLocaleString(), 
+              change: 15 
+            },
+            { 
+              key: 'toolsUsed', 
+              label: 'Tools Used', 
+              value: dashboardData?.stats?.toolsUsed || 0, 
+              change: 5 
+            }
+          ].map((stat, index) => (
             <div
-              key={key}
+              key={stat.key}
               className={cn(
-                "transition-all duration-500 ease-out",
+                "transition-all duration-300 ease-out",
                 isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
               )}
-              style={{ transitionDelay: `${index * 100}ms` }}
+              style={{ transitionDelay: `${index * 50}ms` }}
             >
-              <Card className="bg-card/80 backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <Card className="bg-card/80 backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-200 shadow-lg hover:shadow-xl">
                 <CardContent className="p-6">
                   <p className="text-muted-foreground mb-2">{stat.label}</p>
                   <div className="flex items-end justify-between">
@@ -315,58 +347,47 @@ export default function Dashboard() {
             </div>
           ))}
           
-          {/* Loading state */}
-          {loading && !dashboardData && Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className={cn(
-                "transition-all duration-500 ease-out",
-                isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-              )}
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <Card className="bg-card/80 backdrop-blur-xl border-border">
-                <CardContent className="p-6">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Loading state overlay */}
+          {loading && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <span className="text-muted-foreground">Loading dashboard data...</span>
+              </div>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Activity Chart */}
-        {dashboardData?.chartData && dashboardData.chartData.length > 0 && (
+        {dashboardData?.projectsOverTime && dashboardData.projectsOverTime.length > 0 && (
           <div className={cn(
-            "mb-8 transition-all duration-500 ease-out",
+            "mb-8 transition-all duration-300 ease-out",
             isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          )} style={{ transitionDelay: '400ms' }}>
-            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-300 shadow-lg hover:shadow-xl">
+          )} style={{ transitionDelay: '200ms' }}>
+            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-200 shadow-lg hover:shadow-xl">
               <CardHeader>
-                <CardTitle className="text-xl text-foreground">Activity Overview (Last 7 Days)</CardTitle>
+                <CardTitle className="text-xl text-foreground">Projects Over Time</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-64 w-full">
-                  <div className="grid grid-cols-7 gap-2 h-full">
-                    {dashboardData.chartData.map((day, index) => {
-                      const maxValue = Math.max(...dashboardData.chartData.map(d => d.scrapes));
-                      const height = maxValue > 0 ? (day.scrapes / maxValue) * 100 : 0;
+                  <div className="grid grid-cols-6 gap-2 h-full">
+                    {dashboardData.projectsOverTime.map((month: { date: string; count?: number }, index: number) => {
+                      const maxValue = Math.max(...dashboardData.projectsOverTime.map((d: { count?: number }) => d.count || 0));
+                      const height = maxValue > 0 ? ((month.count || 0) / maxValue) * 100 : 0;
                       
                       return (
-                        <div key={day.date} className="flex flex-col items-center justify-end h-full">
+                        <div key={month.date} className="flex flex-col items-center justify-end h-full">
                           <div 
-                            className="w-full bg-primary/80 rounded-t transition-all duration-500 hover:bg-primary"
+                            className="w-full bg-primary/80 rounded-t transition-all duration-300 hover:bg-primary"
                             style={{ 
                               height: `${height}%`,
-                              minHeight: day.scrapes > 0 ? '8px' : '2px',
-                              transitionDelay: `${index * 100}ms`
+                              minHeight: (month.count || 0) > 0 ? '8px' : '2px',
+                              transitionDelay: `${index * 50}ms`
                             }}
                           />
                           <div className="text-xs text-muted-foreground mt-2 text-center">
-                            <div className="font-medium">{day.scrapes}</div>
-                            <div>{new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}</div>
+                            <div className="font-medium">{month.count}</div>
+                            <div>{new Date(month.date).toLocaleDateString('en', { month: 'short' })}</div>
                           </div>
                         </div>
                       );
@@ -382,35 +403,33 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activity */}
           <div className={cn(
-            "lg:col-span-2 transition-all duration-500 ease-out",
+            "lg:col-span-2 transition-all duration-300 ease-out",
             isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          )} style={{ transitionDelay: '200ms' }}>
-            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-300 shadow-lg hover:shadow-xl">
+          )} style={{ transitionDelay: '100ms' }}>
+            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-200 shadow-lg hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl text-foreground">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData?.recentActivity && dashboardData.recentActivity.length > 0 ? (
-                    dashboardData.recentActivity.map((activity, index) => (
+                  {dashboardData?.recentActivities && dashboardData.recentActivities.length > 0 ? (
+                    dashboardData.recentActivities.map((activity: any, index: number) => (
                       <div 
                         key={activity.id} 
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-lg bg-accent/5 transition-all duration-300 hover:bg-accent/10 cursor-pointer",
+                          "flex items-center justify-between p-3 rounded-lg bg-accent/5 transition-all duration-200 hover:bg-accent/10 cursor-pointer",
                           isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                         )}
-                        style={{ transitionDelay: `${index * 100}ms` }}
-                        onClick={() => activity.project_id && router.push(`/projects/${activity.project_id}`)}
+                        style={{ transitionDelay: `${index * 50}ms` }}
+                        onClick={() => router.push(`/projects`)}
                       >
                         <div className="flex items-center gap-3">
                           {getActivityIcon(activity.type)}
                           <div>
-                            <span className="text-foreground">{activity.message}</span>
-                            {activity.tool_name && (
-                              <div className="text-xs text-muted-foreground">
-                                Tool: {activity.tool_name}
-                              </div>
-                            )}
+                            <span className="text-foreground">{activity.title}</span>
+                            <div className="text-xs text-muted-foreground">
+                              {activity.description}
+                            </div>
                           </div>
                         </div>
                         <span className="text-muted-foreground text-sm">
@@ -425,6 +444,18 @@ export default function Dashboard() {
                           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
                           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
                           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        </div>
+                      ) : !dashboardData ? (
+                        <div>
+                          <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Welcome to your dashboard!</p>
+                          <p className="text-xs mb-4">Start by creating your first project</p>
+                          <Button 
+                            onClick={() => router.push('/new_projects')}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                          >
+                            Create Your First Project
+                          </Button>
                         </div>
                       ) : (
                         <div>
@@ -442,10 +473,10 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className={cn(
-            "transition-all duration-500 ease-out",
+            "transition-all duration-300 ease-out",
             isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          )} style={{ transitionDelay: '300ms' }}>
-            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-300 shadow-lg hover:shadow-xl">
+          )} style={{ transitionDelay: '150ms' }}>
+            <Card className="bg-card/80 backdrop-blur-xl border-border transition-all duration-200 shadow-lg hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl text-foreground">Quick Actions</CardTitle>
               </CardHeader>
@@ -463,10 +494,10 @@ export default function Dashboard() {
                       variant="ghost"
                       onClick={action.action}
                       className={cn(
-                        "w-full justify-start px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-all duration-300 hover:scale-[1.02]",
+                        "w-full justify-start px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-all duration-200 hover:scale-[1.02]",
                         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                       )}
-                      style={{ transitionDelay: `${index * 100}ms` }}
+                      style={{ transitionDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center gap-3">
                         {action.icon}
@@ -476,36 +507,28 @@ export default function Dashboard() {
                   ))}
                 </div>
                 
-                {/* Dashboard Summary */}
-                {dashboardData?.summary && (
-                  <div className="mt-6 pt-4 border-t border-border">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Summary</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Active Projects</span>
-                        <span className="font-medium">{dashboardData.summary.activeProjects}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">This Week</span>
-                        <span className="font-medium">{dashboardData.summary.dataPointsThisWeek} scrapes</span>
-                      </div>
-                      {Object.entries(dashboardData.toolUsage).length > 0 && (
-                        <div className="mt-3">
-                          <div className="text-muted-foreground mb-2">Most Used Tools</div>
-                          {Object.entries(dashboardData.toolUsage)
-                            .sort(([,a], [,b]) => b - a)
-                            .slice(0, 3)
-                            .map(([tool, count]) => (
-                              <div key={tool} className="flex justify-between text-xs">
-                                <span className="capitalize">{tool}</span>
-                                <span>{count}</span>
-                              </div>
-                            ))}
-                        </div>
-                      )}
+                {/* Quick Stats */}
+                <div className="mt-6 pt-4 border-t border-border">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Quick Stats</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Projects This Week</span>
+                      <span className="font-medium">{dashboardData?.quickStats?.projectsThisWeek || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Data Scraped Today</span>
+                      <span className="font-medium">{dashboardData?.quickStats?.dataScrapedToday || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Tools Active</span>
+                      <span className="font-medium">{dashboardData?.quickStats?.toolsActive || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Avg Project Time</span>
+                      <span className="font-medium">{dashboardData?.quickStats?.averageProjectTime || 'N/A'}</span>
                     </div>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -522,9 +545,6 @@ export default function Dashboard() {
             ]}
           />
         </div>
-        
-        {/* Development Auth Debug */}
-        <AuthDebug />
       </div>
 
 

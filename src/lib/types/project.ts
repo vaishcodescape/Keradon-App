@@ -1,7 +1,7 @@
 export interface Project {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   category: string;
   is_public: boolean;
   tags: string[];
@@ -9,6 +9,10 @@ export interface Project {
   created_at: string;
   updated_at: string;
   status: 'active' | 'archived' | 'draft';
+  toolsUsed?: string[];
+  dataScraped?: number;
+  data?: any[];
+  metadata?: Record<string, any>;
 }
 
 export interface ProjectTool {

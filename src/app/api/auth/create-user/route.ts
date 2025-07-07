@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     const { user, error: authError } = await createAuthenticatedClient();
     
     if (authError || !user) {
-      console.log('No session found in create-user API');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -24,15 +23,12 @@ export async function POST(request: NextRequest) {
 
       await adminDb.collection('users').doc(user.uid).set(userData, { merge: true });
 
-      console.log('User record processed successfully:', user.email);
-
       return NextResponse.json({ 
         success: true, 
         message: 'User processed successfully' 
       });
 
     } catch (dbError: any) {
-      console.error('Database error in create-user:', dbError);
       // Don't fail authentication if database operations fail
       return NextResponse.json({ 
         success: true, 
@@ -42,11 +38,9 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('Error in create-user API:', error);
     return NextResponse.json({ 
       success: false,
-      error: 'Internal server error',
-      details: error.message 
+      error: 'Internal server error'
     }, { status: 500 });
   }
 } 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirebaseDb } from '@/lib/config/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { adminDb } from '@/lib/config/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,25 +39,20 @@ export async function POST(request: NextRequest) {
     try {
       // Check if user exists by querying Firestore users collection
       // This is more reliable and doesn't trigger authentication attempts
-      console.log('Checking user existence for email:', sanitizedEmail);
-      
-      const db = await getFirebaseDb();
       
       // Query the users collection for the email
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', sanitizedEmail), limit(1));
-      const querySnapshot = await getDocs(q);
+      const usersRef = adminDb.collection('users');
+      const q = usersRef.where('email', '==', sanitizedEmail).limit(1);
+      const querySnapshot = await q.get();
       
       if (!querySnapshot.empty) {
         // User exists in Firestore
-        console.log('User found in Firestore');
         return NextResponse.json({
           exists: true,
           message: 'An account with this email already exists'
         });
       } else {
         // User doesn't exist
-        console.log('User not found in Firestore');
         return NextResponse.json({
           exists: false,
           message: 'Email is available for registration'
@@ -66,14 +60,12 @@ export async function POST(request: NextRequest) {
       }
     } catch (error: any) {
       // For any errors, don't expose internal details
-      console.error('Error checking user existence:', error);
       return NextResponse.json(
         { error: 'Unable to check email availability' },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Check user API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

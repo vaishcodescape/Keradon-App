@@ -1,16 +1,14 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { FirebaseAuth, type AuthSession, type AuthUser } from '@/lib/auth/firebase-auth';
-import { isFirebaseConfigured, getFirebaseAuth } from '@/lib/config/firebase';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { onAuthStateChanged, Unsubscribe } from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/config/firebase';
+import { FirebaseAuth } from '@/lib/auth/firebase-auth';
 
 interface AuthContextType {
-  user: AuthUser | null;
-  session: AuthSession | null;
+  user: any | null;
   loading: boolean;
-  error: string | null;
-  signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,154 +26,135 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadSession = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Check if Firebase is configured first
-      const configured = await isFirebaseConfigured();
-      if (!configured) {
-        console.warn('Firebase not configured - please set up environment variables');
-        setError('Firebase not configured - please set up environment variables');
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      
-      // Use Firebase's native session management
-      const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
-      
-      if (firebaseUser) {
-        console.log('Firebase user found:', firebaseUser.email);
-        
-        // Get user data from Firestore
-        const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
-        
-        if (sessionError) {
-          console.error('Session loading error:', sessionError);
-          setError(sessionError);
-          setSession(null);
-          setUser(null);
-        } else {
-          setSession(authSession);
-          setUser(authSession?.user || null);
-          console.log('Session loaded:', authSession?.user?.email || 'No user');
-        }
-      } else {
-        console.log('No Firebase user found');
-        setSession(null);
-        setUser(null);
-      }
-    } catch (err: any) {
-      console.error('Session loading exception:', err);
-      setError(err.message);
-      setSession(null);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const signOut = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { error: signOutError } = await FirebaseAuth.signOut();
-      
-      if (signOutError) {
-        setError(signOutError);
-      } else {
-        setSession(null);
-        setUser(null);
-        // Force a full page reload to clear all cookies and redirect to home
-        window.location.href = '/';
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const refreshSession = useCallback(async () => {
-    try {
-      const { error: refreshError } = await FirebaseAuth.refreshSession();
-      if (refreshError) {
-        setError(refreshError);
-      } else {
-        await loadSession();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }, [loadSession]);
+  const [initialized, setInitialized] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Load initial session
-    loadSession();
-
-    // Listen for Firebase auth state changes
-    const setupAuthListener = async () => {
+    const setupAuth = async () => {
       try {
-        console.log('Setting up Firebase auth state change listener...');
+        // Only run Firebase operations in browser environment
+        if (typeof window === 'undefined') {
+          setLoading(false);
+          setInitialized(true);
+          return;
+        }
+
+    
+
+        // First, check if Firebase is configured
+        try {
+          const configResponse = await fetch('/api/firebase-config');
+          const config = await configResponse.json();
+          
+          if (!config.configured) {
+            console.error('Firebase not configured:', config.message);
+            setLoading(false);
+            setInitialized(true);
+            return;
+          }
+          
+  
+        } catch (configError) {
+          console.error('Error checking Firebase config:', configError);
+          setLoading(false);
+          setInitialized(true);
+          return;
+        }
+
+        // Reduced delay for faster loading
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Get Firebase auth instance
         const auth = await getFirebaseAuth();
+
         
-        const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-          console.log('Firebase auth state changed:', firebaseUser?.email || 'No user');
-          console.log('Current pathname:', typeof window !== 'undefined' ? window.location.pathname : 'server');
+        // Check if there's already a current user
+        const currentUser = auth.currentUser;
+
+        
+        // If we're on the auth callback page, handle the redirect result first
+        if (pathname === '/auth/callback') {
+  
+          const { data: redirectResult, error: redirectError } = await FirebaseAuth.handleRedirectResult();
+          
+          if (redirectError) {
+            console.error('Redirect result error:', redirectError);
+            // Don't redirect on error, let the callback page handle it
+            setLoading(false);
+            setInitialized(true);
+            return;
+          }
+          
+          if (redirectResult) {
+    
+            // The auth state listener will handle the redirect
+          }
+        }
+        
+        // Reduced delay for faster loading
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+  
           
           if (firebaseUser) {
-            // User signed in
-            console.log('User signed in:', firebaseUser.email);
+    
             
-            // Get user data from Firestore
-            const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
-            
-            if (sessionError) {
-              console.error('Session loading error:', sessionError);
-              setError(sessionError);
-              setSession(null);
+            try {
+              // Set authentication cookie for server-side verification
+              await FirebaseAuth.setAuthCookie(firebaseUser);
+      
+              
+              setUser(firebaseUser);
+              
+              // Only redirect if there's a stored redirect destination (e.g., from sign-in)
+              if (pathname !== '/auth/callback') {
+                const redirectTo = sessionStorage.getItem('authRedirectTo');
+                if (redirectTo) {
+                  sessionStorage.removeItem('authRedirectTo'); // Clean up
+                  router.push(redirectTo);
+                }
+                // Don't redirect if no specific destination is stored
+              }
+            } catch (err: any) {
+              console.error('Error setting up user session:', err);
               setUser(null);
-            } else {
-              setSession(authSession);
-              setUser(authSession?.user || null);
-              console.log('Session loaded:', authSession?.user?.email || 'No user');
-            }
-            
-            // If we have a session, try to redirect to dashboard if we're on callback page
-            if (authSession?.user && typeof window !== 'undefined' && window.location.pathname === '/auth/callback') {
-              const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
-              console.log('Session provider forcing redirect to:', redirectTo);
-              window.location.href = redirectTo;
+              // Don't redirect on error, let the user stay on current page
             }
           } else {
-            // User signed out
-            console.log('User signed out');
-            setSession(null);
+    
             setUser(null);
-            setError(null);
+            
+            // Clear authentication cookie
+            await FirebaseAuth.clearAuthCookie();
+            
+            // Only redirect to sign-in if we're not already there and not on callback page
+            if (pathname !== '/sign-in' && pathname !== '/sign-up' && pathname !== '/auth/callback') {
+              router.push("/sign-in");
+            }
           }
           
           setLoading(false);
+          setInitialized(true);
         });
         
-        console.log('Firebase auth state change listener set up successfully');
-        return unsubscribe;
-      } catch (error) {
-        console.error('Error setting up Firebase auth listener:', error);
-        return () => {};
+        return unsub;
+      } catch (error: any) {
+        console.error('Error setting up auth:', error);
+        setLoading(false);
+        setInitialized(true);
+        return;
       }
     };
 
-    let unsubscribe: (() => void) | null = null;
-    setupAuthListener().then(unsub => {
-      unsubscribe = unsub;
+    let unsubscribe: Unsubscribe | null = null;
+    setupAuth().then(unsub => {
+      if (unsub) {
+        unsubscribe = unsub;
+      }
     });
 
     return () => {
@@ -183,17 +162,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         unsubscribe();
       }
     };
-  }, [loadSession]);
+  }, [router, pathname]);
+
+  // Don't render children until Firebase is initialized
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        session,
         loading,
-        error,
-        signOut,
-        refreshSession,
       }}
     >
       {children}

@@ -2,6 +2,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -38,23 +39,58 @@ export interface AuthSession {
 }
 
 export class FirebaseAuth {
-  // Google OAuth Sign In
+  // Google OAuth Sign In with Popup
   static async signInWithGoogle() {
     try {
-      console.log('Initiating Google OAuth...');
-      
       const auth = await getFirebaseAuth();
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
       
-      // Use redirect method directly to avoid COOP issues
-      await signInWithRedirect(auth, provider);
-      return { data: null, error: null }; // Redirect will handle the flow
+      // Add custom parameters for better OAuth flow
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      // Use popup method for better user experience
+      const result = await signInWithPopup(auth, provider);
+      
+      // Create or update user document
+      await this.createOrUpdateUserDocument(result.user);
+      
+      // Set authentication cookie
+      await this.setAuthCookie(result.user);
+      
+      return { data: result, error: null };
       
     } catch (error: any) {
-      console.error('Google OAuth error:', error);
-      return { data: null, error: error.message };
+      // Provide user-friendly error messages for popup-specific errors
+      let userFriendlyError = 'Sign in failed. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          userFriendlyError = 'Sign in was cancelled. Please try again.';
+          break;
+        case 'auth/popup-blocked':
+          userFriendlyError = 'Popup was blocked. Please allow popups for this site and try again.';
+          break;
+        case 'auth/cancelled-popup-request':
+          userFriendlyError = 'Sign in was cancelled. Please try again.';
+          break;
+        case 'auth/account-exists-with-different-credential':
+          userFriendlyError = 'An account already exists with this email using a different sign-in method.';
+          break;
+        case 'auth/operation-not-allowed':
+          userFriendlyError = 'Google sign-in is not enabled. Please contact support.';
+          break;
+        case 'auth/network-request-failed':
+          userFriendlyError = 'Network error. Please check your connection and try again.';
+          break;
+        default:
+          userFriendlyError = error.message || 'Sign in failed. Please try again.';
+      }
+      
+      return { data: null, error: userFriendlyError };
     }
   }
 
@@ -67,11 +103,8 @@ export class FirebaseAuth {
       // Set authentication cookie
       await this.setAuthCookie(result.user);
       
-      console.log('Email sign in successful for:', result.user.email);
       return { data: result, error: null };
     } catch (error: any) {
-      console.error('Email sign in error:', error);
-      
       // Provide more user-friendly error messages
       let userFriendlyError = 'Sign in failed. Please try again.';
       
@@ -125,8 +158,6 @@ export class FirebaseAuth {
       
       return { data: result, error: null };
     } catch (error: any) {
-      console.error('Email sign up error:', error);
-      
       // Provide user-friendly error messages based on Firebase error codes
       let userFriendlyError = 'Sign up failed. Please try again.';
       
@@ -168,29 +199,22 @@ export class FirebaseAuth {
       
       return { error: null };
     } catch (error: any) {
-      console.error('Sign out error:', error);
       return { error: error.message };
     }
   }
 
-  // Set authentication cookie
-  static async setAuthCookie(user: User) {
+  // Set authentication cookie (server-side via API route)
+  static async setAuthCookie(user: User, forceRefresh: boolean = false) {
     try {
-      const token = await user.getIdToken();
-      
-      // Set cookie with 7 days expiration
-      const expires = new Date();
-      expires.setDate(expires.getDate() + 7);
-      
-      // Only set secure cookie in production (HTTPS)
-      const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
-      const secureFlag = isSecure ? '; secure' : '';
-      
-      document.cookie = `firebase-token=${token}; expires=${expires.toUTCString()}; path=/; samesite=strict${secureFlag}`;
-      
-      console.log('Authentication cookie set for user:', user.email);
+      const token = await user.getIdToken(forceRefresh);
+      // POST token to API route to set cookie server-side
+      await fetch('/api/auth/set-cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token }),
+        credentials: 'include',
+      });
     } catch (error: any) {
-      console.error('Error setting auth cookie:', error);
       // Don't throw error for cookie issues as they're not critical for auth flow
     }
   }
@@ -199,44 +223,29 @@ export class FirebaseAuth {
   static async clearAuthCookie() {
     try {
       document.cookie = 'firebase-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      console.log('Authentication cookie cleared');
     } catch (error: any) {
-      console.error('Error clearing auth cookie:', error);
+      // Silent fail for cookie clearing
     }
   }
 
   // Handle redirect result (for OAuth redirect flow)
   static async handleRedirectResult() {
     try {
-      console.log('Handling redirect result...');
       const auth = await getFirebaseAuth();
-      console.log('Firebase auth instance:', auth ? 'Initialized' : 'Not initialized');
-      
       const result = await getRedirectResult(auth);
       
-      console.log('Redirect result:', result ? 'Found' : 'None');
       if (result) {
-        console.log('Redirect result user:', result.user.email);
-        console.log('Redirect result user ID:', result.user.uid);
-      }
-      
-      if (result) {
-        console.log('Redirect result received for user:', result.user.email);
-        
         // Create or update user document
         await this.createOrUpdateUserDocument(result.user);
         
         // Set authentication cookie
         await this.setAuthCookie(result.user);
         
-        console.log('Redirect result processed successfully');
         return { data: result, error: null };
       }
       
-      console.log('No redirect result found');
       return { data: null, error: null };
     } catch (error: any) {
-      console.error('Redirect result error:', error);
       return { data: null, error: error.message };
     }
   }
@@ -249,13 +258,10 @@ export class FirebaseAuth {
       
       if (!user) return { session: null, error: null };
 
-      console.log('Getting session for user:', user.email);
-
       // Get user data from Firestore
       const userData = await this.getUserData(user.uid);
       
       if (!userData) {
-        console.log('Creating user data from auth metadata');
         await this.createOrUpdateUserDocument(user);
         const newUserData = await this.getUserData(user.uid);
         if (!newUserData) {
@@ -280,7 +286,6 @@ export class FirebaseAuth {
 
       return { session: authSession, error: null };
     } catch (error: any) {
-      console.error('Get session error:', error);
       return { session: null, error: error.message };
     }
   }
@@ -291,7 +296,6 @@ export class FirebaseAuth {
       const auth = await getFirebaseAuth();
       return auth.currentUser;
     } catch (error: any) {
-      console.error('Get current Firebase user error:', error);
       return null;
     }
   }
@@ -313,7 +317,53 @@ export class FirebaseAuth {
       const token = await user.getIdToken(true); // Force refresh
       return { data: { access_token: token }, error: null };
     } catch (error: any) {
-      console.error('Refresh session error:', error);
+      return { data: null, error: error.message };
+    }
+  }
+
+  // Get fresh ID token with force refresh
+  static async getFreshIdToken(forceRefresh: boolean = true) {
+    try {
+      const auth = await getFirebaseAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        throw new Error('No user logged in');
+      }
+      
+      const idToken = await user.getIdToken(forceRefresh);
+      
+      return { token: idToken, error: null };
+    } catch (error: any) {
+      return { token: null, error: error.message };
+    }
+  }
+
+  // Send token to backend via HTTPS
+  static async sendTokenToBackend(endpoint: string = '/api/auth/verify-token') {
+    try {
+      const { token, error } = await this.getFreshIdToken(true);
+      
+      if (error || !token) {
+        throw new Error(error || 'Failed to get ID token');
+      }
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ idToken: token }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Backend request failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return { data, error: null };
+    } catch (error: any) {
       return { data: null, error: error.message };
     }
   }
@@ -322,8 +372,6 @@ export class FirebaseAuth {
   static async onAuthStateChange(callback: (session: AuthSession | null) => void) {
     const auth = await getFirebaseAuth();
     return onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state change:', user?.email || 'No user');
-      
       if (user) {
         try {
           // Set authentication cookie for server-side verification
@@ -332,7 +380,6 @@ export class FirebaseAuth {
           const { session } = await this.getSession();
           callback(session);
         } catch (error) {
-          console.error('Error getting session during auth state change:', error);
           callback(null);
         }
       } else {
@@ -346,8 +393,6 @@ export class FirebaseAuth {
   // Private helper methods
   private static async getUserData(userId: string): Promise<AuthUser | null> {
     try {
-      console.log('Fetching user data from Firestore for userId:', userId);
-      
       const db = await getFirebaseDb();
       const userDoc = await getDoc(doc(db, 'users', userId));
       
@@ -366,7 +411,6 @@ export class FirebaseAuth {
       
       return null;
     } catch (error) {
-      console.error('Error fetching user data:', error);
       return null;
     }
   }
@@ -388,17 +432,14 @@ export class FirebaseAuth {
       if (userDoc.exists()) {
         // Update existing user
         await updateDoc(userRef, userData);
-        console.log('Updated user document');
       } else {
         // Create new user
         await setDoc(userRef, {
           ...userData,
           created_at: serverTimestamp(),
         });
-        console.log('Created new user document');
       }
     } catch (error) {
-      console.error('Error creating/updating user document:', error);
       throw error;
     }
   }
