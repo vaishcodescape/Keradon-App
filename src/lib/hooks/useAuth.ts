@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FirebaseAuth, type AuthSession, type AuthUser } from '@/lib/auth/firebase-auth';
-import { isFirebaseConfigured } from '@/lib/config/firebase';
+import { isFirebaseConfigured, getFirebaseAuth } from '@/lib/config/firebase';
 import { useRouter } from 'next/navigation';
 
 interface UseAuthReturn {
@@ -35,15 +35,27 @@ export function useAuth(): UseAuthReturn {
         return;
       }
       
-      const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+      // Use Firebase's native session management
+      const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
       
-      if (sessionError) {
-        setError(sessionError);
+      if (firebaseUser) {
+        console.log('useAuth: Firebase user found:', firebaseUser.email);
+        
+        // Get user data from Firestore
+        const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+        
+        if (sessionError) {
+          setError(sessionError);
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(authSession);
+          setUser(authSession?.user || null);
+        }
+      } else {
+        console.log('useAuth: No Firebase user found');
         setSession(null);
         setUser(null);
-      } else {
-        setSession(authSession);
-        setUser(authSession?.user || null);
       }
     } catch (err: any) {
       setError(err.message);
@@ -91,14 +103,45 @@ export function useAuth(): UseAuthReturn {
     // Load initial session
     loadSession();
 
-    // Listen for auth changes
+    // Listen for Firebase auth state changes
     const setupAuthListener = async () => {
-      const unsubscribe = await FirebaseAuth.onAuthStateChange((authSession) => {
-        setSession(authSession);
-        setUser(authSession?.user || null);
-        setLoading(false);
-      });
-      return unsubscribe;
+      try {
+        const auth = await getFirebaseAuth();
+        
+        const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+          console.log('useAuth: Firebase auth state changed:', firebaseUser?.email || 'No user');
+          
+          if (firebaseUser) {
+            // User signed in
+            console.log('useAuth: User signed in:', firebaseUser.email);
+            
+            // Get user data from Firestore
+            const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+            
+            if (sessionError) {
+              setError(sessionError);
+              setSession(null);
+              setUser(null);
+            } else {
+              setSession(authSession);
+              setUser(authSession?.user || null);
+            }
+          } else {
+            // User signed out
+            console.log('useAuth: User signed out');
+            setSession(null);
+            setUser(null);
+            setError(null);
+          }
+          
+          setLoading(false);
+        });
+        
+        return unsubscribe;
+      } catch (error) {
+        console.error('useAuth: Error setting up Firebase auth listener:', error);
+        return () => {};
+      }
     };
 
     let unsubscribe: (() => void) | null = null;

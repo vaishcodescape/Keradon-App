@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import { getFirebaseAuth } from "@/lib/config/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loading } from "@/components/ui/loading";
@@ -20,40 +21,58 @@ function AuthCallbackContent() {
       try {
         console.log('Callback page loaded, processing authentication...');
         console.log('Current URL:', window.location.href);
+        console.log('URL search params:', window.location.search);
         
-        // Try to get session with retry logic for OAuth
-        let session = null;
-        let attempts = 0;
-        const maxAttempts = 3;
+        // Handle redirect result from OAuth
+        const { data: redirectResult, error: redirectError } = await FirebaseAuth.handleRedirectResult();
         
-        while (!session && attempts < maxAttempts) {
-          try {
-            const auth = await getFirebaseAuth();
-            const user = auth.currentUser;
-            
-            if (user) {
-              session = { user };
-              console.log('Session found on attempt', attempts + 1, 'for user:', user.email);
-              break;
-            }
-          } catch (error: any) {
-            console.error('Auth callback error:', error);
-            setError(error.message);
-            setStatus('error');
-            return;
-          }
-          
-          attempts++;
-          console.log(`Attempt ${attempts}/${maxAttempts}: No session found, retrying...`);
-          
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Increase wait time to 500ms
-          }
+        if (redirectError) {
+          console.error('Redirect result error:', redirectError);
+          setError(redirectError);
+          setStatus('error');
+          return;
         }
-
-        if (session?.user) {
-          console.log('OAuth session established for user:', session.user.email);
+        
+        if (redirectResult) {
+          console.log('OAuth redirect successful for user:', redirectResult.user.email);
+          setStatus('success');
           
+          // Double-check that the user is actually authenticated
+          const auth = await getFirebaseAuth();
+          console.log('Current auth user after redirect:', auth.currentUser?.email || 'No user');
+          
+          // Get redirect destination from session storage or default to dashboard
+          const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
+          sessionStorage.removeItem('authRedirectTo'); // Clean up
+          
+          console.log('Redirecting to:', redirectTo);
+          
+          // Redirect immediately - no delay needed
+          try {
+            router.push(redirectTo);
+            router.refresh(); // Force a refresh to ensure session state is updated
+          } catch (routerError) {
+            console.warn('Router push failed, using window.location:', routerError);
+            // Fallback to window.location if router fails
+            window.location.href = redirectTo;
+          }
+          
+          // Force redirect after 2 seconds if still on this page
+          setTimeout(() => {
+            if (window.location.pathname === '/auth/callback') {
+              console.log('Forcing redirect to:', redirectTo);
+              window.location.href = redirectTo;
+            }
+          }, 2000);
+          
+          return;
+        }
+        
+        // If no redirect result, try to get current Firebase user
+        const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
+        
+        if (firebaseUser) {
+          console.log('Firebase user found after redirect:', firebaseUser.email);
           setStatus('success');
           
           // Get redirect destination from session storage or default to dashboard
@@ -62,16 +81,25 @@ function AuthCallbackContent() {
           
           console.log('Redirecting to:', redirectTo);
           
-          // Use router.push with a longer delay to ensure session is properly set
-          setTimeout(() => {
+          // Redirect immediately - no delay needed
+          try {
             router.push(redirectTo);
-            router.refresh(); // Force a refresh to ensure session state is updated
-          }, 1000);
+            router.refresh();
+          } catch (routerError) {
+            console.warn('Router push failed, using window.location:', routerError);
+            // Fallback to window.location if router fails
+            window.location.href = redirectTo;
+          }
           
-          // User record will be created automatically when session is fetched
-          
+          // Force redirect after 2 seconds if still on this page
+          setTimeout(() => {
+            if (window.location.pathname === '/auth/callback') {
+              console.log('Forcing redirect to:', redirectTo);
+              window.location.href = redirectTo;
+            }
+          }, 2000);
         } else {
-          console.error('No session found after OAuth callback after all attempts');
+          console.error('No Firebase user found after OAuth callback');
           setError('Authentication session could not be established. Please try signing in again.');
           setStatus('error');
         }
@@ -93,12 +121,8 @@ function AuthCallbackContent() {
       return;
     }
 
-    // Add a small delay to ensure URL processing is complete
-    const timer = setTimeout(() => {
-      handleAuthCallback();
-    }, 100);
-
-    return () => clearTimeout(timer);
+    // Process immediately - no delay needed
+    handleAuthCallback();
   }, [router, searchParams]);
 
   if (status === 'loading') {

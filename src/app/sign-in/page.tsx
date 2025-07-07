@@ -84,11 +84,18 @@ function SignInContent() {
       } else if (data?.user) {
         toast.success("Signed in successfully! Redirecting...");
         
-        // Redirect to the intended destination or dashboard
-        setTimeout(() => {
+        // Check if Firebase user is available immediately
+        const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
+        if (firebaseUser) {
+          console.log('Firebase user confirmed after email sign-in:', firebaseUser.email);
+          // Redirect immediately - no delay needed
           router.push(redirectTo);
           router.refresh();
-        }, 500);
+        } else {
+          console.warn('Firebase user not immediately available, redirecting anyway');
+          router.push(redirectTo);
+          router.refresh();
+        }
       } else {
         setError("Sign in failed. Please try again.");
       }
@@ -119,8 +126,10 @@ function SignInContent() {
         return;
       }
       
-      console.log('Google OAuth initiated successfully');
-      // The OAuth flow will handle the redirect via the callback page
+      // Google OAuth always uses redirect now
+      console.log('Google OAuth redirect initiated');
+      // The page will redirect automatically, so we don't need to do anything
+      return;
       
     } catch (err: any) {
       console.error('Google sign-in error:', err);
@@ -136,7 +145,7 @@ function SignInContent() {
           <div className="flex flex-col items-center gap-4">
             <Loading size={32} />
             <span className="text-white text-lg font-medium">
-              {isGoogleLoading ? "Redirecting to Dashboard..." : "Signing you in..."}
+              {isGoogleLoading ? "Redirecting to Google..." : "Signing you in..."}
             </span>
           </div>
         </div>

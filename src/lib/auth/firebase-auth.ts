@@ -1,7 +1,8 @@
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -47,29 +48,10 @@ export class FirebaseAuth {
       provider.addScope('email');
       provider.addScope('profile');
       
-      // Use signInWithPopup but handle popup blocked errors
-      let result;
-      try {
-        result = await signInWithPopup(auth, provider);
-      } catch (popupError: any) {
-        // If popup is blocked, provide a helpful error message
-        if (popupError.code === 'auth/popup-blocked') {
-          throw new Error('Popup blocked by browser. Please allow popups for this site and try again.');
-        }
-        if (popupError.code === 'auth/popup-closed-by-user') {
-          throw new Error('Sign-in was cancelled. Please try again.');
-        }
-        throw popupError;
-      }
+      // Use redirect method directly to avoid COOP issues
+      await signInWithRedirect(auth, provider);
+      return { data: null, error: null }; // Redirect will handle the flow
       
-      // Create or update user document
-      await this.createOrUpdateUserDocument(result.user);
-      
-      // Set authentication cookie
-      await this.setAuthCookie(result.user);
-      
-      console.log('Google OAuth successful:', result.user.email);
-      return { data: result, error: null };
     } catch (error: any) {
       console.error('Google OAuth error:', error);
       return { data: null, error: error.message };
@@ -144,7 +126,34 @@ export class FirebaseAuth {
       return { data: result, error: null };
     } catch (error: any) {
       console.error('Email sign up error:', error);
-      return { data: null, error: error.message };
+      
+      // Provide user-friendly error messages based on Firebase error codes
+      let userFriendlyError = 'Sign up failed. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          userFriendlyError = 'auth/email-already-in-use';
+          break;
+        case 'auth/invalid-email':
+          userFriendlyError = 'Please enter a valid email address.';
+          break;
+        case 'auth/weak-password':
+          userFriendlyError = 'Password is too weak. Please choose a stronger password.';
+          break;
+        case 'auth/operation-not-allowed':
+          userFriendlyError = 'Email/password sign up is not enabled. Please contact support.';
+          break;
+        case 'auth/network-request-failed':
+          userFriendlyError = 'Network error. Please check your connection and try again.';
+          break;
+        case 'auth/too-many-requests':
+          userFriendlyError = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          userFriendlyError = error.message || 'Sign up failed. Please try again.';
+      }
+      
+      return { data: null, error: userFriendlyError };
     }
   }
 
@@ -196,6 +205,42 @@ export class FirebaseAuth {
     }
   }
 
+  // Handle redirect result (for OAuth redirect flow)
+  static async handleRedirectResult() {
+    try {
+      console.log('Handling redirect result...');
+      const auth = await getFirebaseAuth();
+      console.log('Firebase auth instance:', auth ? 'Initialized' : 'Not initialized');
+      
+      const result = await getRedirectResult(auth);
+      
+      console.log('Redirect result:', result ? 'Found' : 'None');
+      if (result) {
+        console.log('Redirect result user:', result.user.email);
+        console.log('Redirect result user ID:', result.user.uid);
+      }
+      
+      if (result) {
+        console.log('Redirect result received for user:', result.user.email);
+        
+        // Create or update user document
+        await this.createOrUpdateUserDocument(result.user);
+        
+        // Set authentication cookie
+        await this.setAuthCookie(result.user);
+        
+        console.log('Redirect result processed successfully');
+        return { data: result, error: null };
+      }
+      
+      console.log('No redirect result found');
+      return { data: null, error: null };
+    } catch (error: any) {
+      console.error('Redirect result error:', error);
+      return { data: null, error: error.message };
+    }
+  }
+
   // Get Current Session
   static async getSession(): Promise<{ session: AuthSession | null; error: string | null }> {
     try {
@@ -237,6 +282,17 @@ export class FirebaseAuth {
     } catch (error: any) {
       console.error('Get session error:', error);
       return { session: null, error: error.message };
+    }
+  }
+
+  // Get Firebase User directly (simpler approach)
+  static async getCurrentFirebaseUser() {
+    try {
+      const auth = await getFirebaseAuth();
+      return auth.currentUser;
+    } catch (error: any) {
+      console.error('Get current Firebase user error:', error);
+      return null;
     }
   }
 

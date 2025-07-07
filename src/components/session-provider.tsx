@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { FirebaseAuth, type AuthSession, type AuthUser } from '@/lib/auth/firebase-auth';
-import { isFirebaseConfigured } from '@/lib/config/firebase';
+import { isFirebaseConfigured, getFirebaseAuth } from '@/lib/config/firebase';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -49,17 +49,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
       
-      const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+      // Use Firebase's native session management
+      const firebaseUser = await FirebaseAuth.getCurrentFirebaseUser();
       
-      if (sessionError) {
-        console.error('Session loading error:', sessionError);
-        setError(sessionError);
+      if (firebaseUser) {
+        console.log('Firebase user found:', firebaseUser.email);
+        
+        // Get user data from Firestore
+        const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+        
+        if (sessionError) {
+          console.error('Session loading error:', sessionError);
+          setError(sessionError);
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(authSession);
+          setUser(authSession?.user || null);
+          console.log('Session loaded:', authSession?.user?.email || 'No user');
+        }
+      } else {
+        console.log('No Firebase user found');
         setSession(null);
         setUser(null);
-      } else {
-        setSession(authSession);
-        setUser(authSession?.user || null);
-        console.log('Session loaded:', authSession?.user?.email || 'No user');
       }
     } catch (err: any) {
       console.error('Session loading exception:', err);
@@ -108,16 +120,57 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Load initial session
     loadSession();
 
-    // Listen for auth changes
+    // Listen for Firebase auth state changes
     const setupAuthListener = async () => {
-      const unsubscribe = await FirebaseAuth.onAuthStateChange((authSession: AuthSession | null) => {
-        console.log('Session provider received auth change:', authSession?.user?.email || 'No user');
-        setSession(authSession);
-        setUser(authSession?.user || null);
-        setLoading(false);
-        setError(null);
-      });
-      return unsubscribe;
+      try {
+        console.log('Setting up Firebase auth state change listener...');
+        const auth = await getFirebaseAuth();
+        
+        const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+          console.log('Firebase auth state changed:', firebaseUser?.email || 'No user');
+          console.log('Current pathname:', typeof window !== 'undefined' ? window.location.pathname : 'server');
+          
+          if (firebaseUser) {
+            // User signed in
+            console.log('User signed in:', firebaseUser.email);
+            
+            // Get user data from Firestore
+            const { session: authSession, error: sessionError } = await FirebaseAuth.getSession();
+            
+            if (sessionError) {
+              console.error('Session loading error:', sessionError);
+              setError(sessionError);
+              setSession(null);
+              setUser(null);
+            } else {
+              setSession(authSession);
+              setUser(authSession?.user || null);
+              console.log('Session loaded:', authSession?.user?.email || 'No user');
+            }
+            
+            // If we have a session, try to redirect to dashboard if we're on callback page
+            if (authSession?.user && typeof window !== 'undefined' && window.location.pathname === '/auth/callback') {
+              const redirectTo = sessionStorage.getItem('authRedirectTo') || '/dashboard';
+              console.log('Session provider forcing redirect to:', redirectTo);
+              window.location.href = redirectTo;
+            }
+          } else {
+            // User signed out
+            console.log('User signed out');
+            setSession(null);
+            setUser(null);
+            setError(null);
+          }
+          
+          setLoading(false);
+        });
+        
+        console.log('Firebase auth state change listener set up successfully');
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error setting up Firebase auth listener:', error);
+        return () => {};
+      }
     };
 
     let unsubscribe: (() => void) | null = null;

@@ -5,7 +5,7 @@ import { adminAuth } from '@/lib/config/firebase-admin';
 // List of allowed origins
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://keradon.vercel.app'
+  'https://keradon-co.vercel.app'
 ];
 
 // Public routes that don't require authentication
@@ -14,7 +14,8 @@ const publicRoutes = [
   '/sign-in',
   '/sign-up',
   '/auth/callback',
-  '/api/firebase-config'
+  '/api/firebase-config',
+  '/api/auth/check-user'
 ];
 
 // Routes that require authentication
@@ -46,9 +47,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Security headers
-  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.vercel.live https://apis.google.com https://accounts.google.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' blob: data: https://lh3.googleusercontent.com https://api.dicebear.com; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://accounts.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://accounts.google.com https://*.firebaseapp.com;");
 
   // Handle preflight requests
   if (request.method === 'OPTIONS') {
@@ -73,6 +76,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
   if (isProtectedRoute) {
+    console.log('Checking authentication for protected route:', pathname);
     try {
       // Get the Firebase token from cookies
       const token = request.cookies.get('firebase-token')?.value;
