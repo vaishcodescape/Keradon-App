@@ -47,7 +47,20 @@ export class FirebaseAuth {
       provider.addScope('email');
       provider.addScope('profile');
       
-      const result = await signInWithPopup(auth, provider);
+      // Use signInWithPopup but handle popup blocked errors
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        // If popup is blocked, provide a helpful error message
+        if (popupError.code === 'auth/popup-blocked') {
+          throw new Error('Popup blocked by browser. Please allow popups for this site and try again.');
+        }
+        if (popupError.code === 'auth/popup-closed-by-user') {
+          throw new Error('Sign-in was cancelled. Please try again.');
+        }
+        throw popupError;
+      }
       
       // Create or update user document
       await this.createOrUpdateUserDocument(result.user);
@@ -76,7 +89,37 @@ export class FirebaseAuth {
       return { data: result, error: null };
     } catch (error: any) {
       console.error('Email sign in error:', error);
-      return { data: null, error: error.message };
+      
+      // Provide more user-friendly error messages
+      let userFriendlyError = 'Sign in failed. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/invalid-email':
+          userFriendlyError = 'Invalid email address.';
+          break;
+        case 'auth/user-disabled':
+          userFriendlyError = 'This account has been disabled. Please contact support.';
+          break;
+        case 'auth/user-not-found':
+          userFriendlyError = 'No account found with this email address.';
+          break;
+        case 'auth/wrong-password':
+          userFriendlyError = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-credential':
+          userFriendlyError = 'Invalid email or password. Please check your credentials.';
+          break;
+        case 'auth/too-many-requests':
+          userFriendlyError = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          userFriendlyError = 'Network error. Please check your connection and try again.';
+          break;
+        default:
+          userFriendlyError = error.message || 'Sign in failed. Please try again.';
+      }
+      
+      return { data: null, error: userFriendlyError };
     }
   }
 
@@ -130,12 +173,16 @@ export class FirebaseAuth {
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
       
-      document.cookie = `firebase-token=${token}; expires=${expires.toUTCString()}; path=/; secure; samesite=strict`;
+      // Only set secure cookie in production (HTTPS)
+      const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const secureFlag = isSecure ? '; secure' : '';
+      
+      document.cookie = `firebase-token=${token}; expires=${expires.toUTCString()}; path=/; samesite=strict${secureFlag}`;
       
       console.log('Authentication cookie set for user:', user.email);
     } catch (error: any) {
       console.error('Error setting auth cookie:', error);
-      throw error;
+      // Don't throw error for cookie issues as they're not critical for auth flow
     }
   }
 

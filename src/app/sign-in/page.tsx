@@ -7,12 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import { FcGoogle } from "react-icons/fc";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Loading } from "@/components/ui/loading";
+import { AlertCircle } from "lucide-react";
 
 export default function SignIn() {
   return (
@@ -34,9 +35,44 @@ function SignInContent() {
 
   // Get redirect URL from query params or default to dashboard
   const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  
+  // Check for error messages in URL params (e.g., from OAuth failures)
+  const errorParam = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
+  
+  // Set initial error if present in URL
+  useEffect(() => {
+    if (errorParam) {
+      setError(errorDescription || errorParam);
+    }
+  }, [errorParam, errorDescription]);
+
+  // Email validation
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    // Client-side validation
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    if (!password.trim()) {
+      setError('Password is required');
+      return;
+    }
+    
     setIsFormLoading(true);
     
     try {
@@ -44,27 +80,21 @@ function SignInContent() {
 
       if (error) {
         console.error("Sign in error:", error);
-        if (error.includes("Invalid login credentials")) {
-          toast.error("Invalid email or password. Please check your credentials.");
-        } else if (error.includes("Email not confirmed")) {
-          toast.error("Please check your email and click the confirmation link before signing in.");
-        } else {
-          toast.error("Sign in failed. Please try again.");
-        }
+        setError(error);
       } else if (data?.user) {
         toast.success("Signed in successfully! Redirecting...");
         
-        // Always redirect to dashboard after successful sign-in
+        // Redirect to the intended destination or dashboard
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(redirectTo);
           router.refresh();
         }, 500);
       } else {
-        toast.error("Sign in failed. Please try again.");
+        setError("Sign in failed. Please try again.");
       }
     } catch (error) {
       console.error("Sign in exception:", error);
-      toast.error("An error occurred during sign in");
+      setError("An error occurred during sign in");
     } finally {
       setIsFormLoading(false);
     }
@@ -75,16 +105,16 @@ function SignInContent() {
     setError('');
     
     try {
-      // Always redirect to dashboard after OAuth
-      sessionStorage.setItem('authRedirectTo', '/dashboard');
+      // Store redirect destination for OAuth callback
+      sessionStorage.setItem('authRedirectTo', redirectTo);
       
-      console.log('Starting Google OAuth, will redirect to dashboard');
+      console.log('Starting Google OAuth, will redirect to:', redirectTo);
       
       const { data, error } = await FirebaseAuth.signInWithGoogle();
       
       if (error) {
         console.error('Google sign-in error:', error);
-        setError(error.message);
+        setError(error);
         setIsGoogleLoading(false);
         return;
       }
@@ -106,7 +136,7 @@ function SignInContent() {
           <div className="flex flex-col items-center gap-4">
             <Loading size={32} />
             <span className="text-white text-lg font-medium">
-              {isGoogleLoading ? "Redirecting to Google..." : "Signing you in..."}
+              {isGoogleLoading ? "Redirecting to Dashboard..." : "Signing you in..."}
             </span>
           </div>
         </div>
@@ -117,6 +147,17 @@ function SignInContent() {
           <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div 
+              className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-center gap-2 text-destructive text-sm"
+              role="alert"
+              aria-live="polite"
+              id="error-message"
+            >
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -125,18 +166,36 @@ function SignInContent() {
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(''); // Clear error when user starts typing
+                }}
                 required
+                aria-describedby={error ? "error-message" : undefined}
+                aria-invalid={error ? "true" : "false"}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <PasswordInput
                 id="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(''); // Clear error when user starts typing
+                }}
                 required
+                aria-describedby={error ? "error-message" : undefined}
+                aria-invalid={error ? "true" : "false"}
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -149,7 +208,12 @@ function SignInContent() {
                 Remember me for 30 days
               </Label>
             </div>
-            <Button type="submit" className="w-full" disabled={isFormLoading || isGoogleLoading}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isFormLoading || isGoogleLoading || !email.trim() || !password.trim()}
+              aria-describedby={error ? "error-message" : undefined}
+            >
               {isFormLoading ? (
                 <div className="flex items-center gap-2">
                   <Loading size={16} />
@@ -173,6 +237,7 @@ function SignInContent() {
             className="w-full"
             onClick={handleGoogleSignIn}
             disabled={isFormLoading || isGoogleLoading}
+            type="button"
           >
             {isGoogleLoading ? (
               <div className="flex items-center gap-2">
