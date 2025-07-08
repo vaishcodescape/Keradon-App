@@ -37,7 +37,9 @@ export default function Dashboard() {
   const fetchDashboardData = useCallback(async () => {
     try {
       setError('');
+      console.log('Fetching dashboard data for user:', user?.uid);
       const response = await dashboardApi.getStats();
+      console.log('Dashboard API response:', response);
       if (response.success) {
         setDashboardData(response.data);
       } else {
@@ -50,7 +52,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   // Refresh data
   const handleRefresh = async () => {
@@ -119,12 +121,36 @@ export default function Dashboard() {
   }
 
   if ((!user || !user.uid) && !authLoading) {
+    console.log('User not authenticated, showing sign-in prompt');
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-96">
+      <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)]" />
+        
+        <Card className="w-96 relative z-10 bg-card/80 backdrop-blur-xl border-border">
           <CardContent className="pt-6 text-center">
-            <p className="text-red-600 mb-4">You are not signed in. Please sign in to view your dashboard.</p>
-            <Button onClick={() => router.push('/sign-in')}>Sign In</Button>
+            <div className="mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <Home className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-2">Welcome to Keradon</h2>
+              <p className="text-muted-foreground text-sm">Sign in to access your dashboard and start managing your projects.</p>
+            </div>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => router.push('/sign-in')} 
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Sign In
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/sign-up')} 
+                className="w-full"
+              >
+                Create Account
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
