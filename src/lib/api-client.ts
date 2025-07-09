@@ -231,6 +231,7 @@ export const apiClient = new ApiClient();
 // Export specific API methods for common endpoints
 export const dashboardApi = {
   getStats: () => apiClient.get('/api/dashboard/stats'),
+  getStatsFallback: () => apiClient.get('/api/dashboard/stats/fallback'),
 };
 
 export const projectsApi = {

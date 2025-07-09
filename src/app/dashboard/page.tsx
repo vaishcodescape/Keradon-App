@@ -37,15 +37,27 @@ export default function Dashboard() {
   const fetchDashboardData = useCallback(async () => {
     try {
       setError('');
-      const response = await dashboardApi.getStats();
-      if (response.success) {
+      console.log('Fetching dashboard data...');
+      
+      // Try the main API first
+      let response = await dashboardApi.getStats();
+      
+      // If main API fails, try fallback
+      if (!response.success) {
+        console.log('Main API failed, trying fallback...');
+        response = await dashboardApi.getStatsFallback();
+      }
+      
+      if (response.success && response.data) {
+        console.log('Dashboard data fetched successfully:', response.data);
         setDashboardData(response.data);
       } else {
+        console.error('Dashboard API failed:', response.error);
         setError(response.error || 'Failed to fetch dashboard data');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch dashboard data');
       console.error('Dashboard fetch error:', err);
+      setError(err.message || 'Failed to fetch dashboard data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,18 +109,16 @@ export default function Dashboard() {
     }
   }, [user?.uid, mounted, authLoading, fetchDashboardData]);
 
-  // Reduced auto-refresh interval for better performance
-  useEffect(() => {
-    if (!user?.uid || !dashboardData) return;
-    
-    const interval = setInterval(() => {
-      if (user?.uid) {
-        fetchDashboardData();
-      }
-    }, 600000); // 10 minutes instead of 5
-    
-    return () => clearInterval(interval);
-  }, [user?.uid, dashboardData, fetchDashboardData]);
+  // Removed auto-refresh interval useEffect
+  // useEffect(() => {
+  //   if (!user?.uid || !dashboardData) return;
+  //   const interval = setInterval(() => {
+  //     if (user?.uid) {
+  //       fetchDashboardData();
+  //     }
+  //   }, 600000); // 10 minutes instead of 5
+  //   return () => clearInterval(interval);
+  // }, [user?.uid, dashboardData, fetchDashboardData]);
 
   if (!mounted || authLoading) {
     return (

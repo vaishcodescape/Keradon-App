@@ -6,7 +6,7 @@ import {
   DocumentData,
   QueryDocumentSnapshot
 } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/config/firebase-admin';
+import { adminDb, testDatabaseConnection } from '@/lib/config/firebase-admin';
 import { DashboardData } from '@/lib/types/dashboard';
 
 export interface UserProject {
@@ -48,17 +48,39 @@ export class FirebaseDashboardService {
    */
   static async getUserStats(userId: string): Promise<UserStats> {
     try {
+      console.log('getUserStats: Starting for userId:', userId);
+      
+      // Check if adminDb is properly initialized
+      if (!adminDb) {
+        console.error('getUserStats: adminDb is not initialized');
+        throw new Error('Firebase Admin not properly initialized');
+      }
+      
       const db = adminDb;
       
-      // Get user's projects
+      // Get user's projects with timeout protection
       const projectsRef = db.collection('projects');
       const projectsQuery = projectsRef.where('userId', '==', userId);
-      const projectsSnapshot = await projectsQuery.get();
+      console.log('getUserStats: About to execute projects query');
+      
+      // Add timeout to prevent hanging queries
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout')), 15000); // 15 second timeout
+      });
+      
+      const projectsSnapshot = await Promise.race([
+        projectsQuery.get(),
+        timeoutPromise
+      ]) as any;
+      
+      console.log('getUserStats: Projects query completed, processing results');
       
       const projects = projectsSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
         id: doc.id,
         ...doc.data()
       })) as UserProject[];
+      
+      console.log('getUserStats: Found', projects.length, 'projects');
       
       // Calculate stats
       const totalProjects = projects.length;
@@ -90,7 +112,16 @@ export class FirebaseDashboardService {
       const activitiesQuery = activitiesRef
         .where('userId', '==', userId)
         .limit(1); // Get just one document, we'll sort in memory if needed
-      const lastActivitySnapshot = await activitiesQuery.get();
+      
+      // Add timeout for activities query as well
+      const activitiesTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Activities query timeout')), 10000); // 10 second timeout
+      });
+      
+      const lastActivitySnapshot = await Promise.race([
+        activitiesQuery.get(),
+        activitiesTimeoutPromise
+      ]) as any;
       
       let lastActivity = new Date().toISOString();
       if (lastActivitySnapshot.docs.length > 0) {
@@ -116,6 +147,19 @@ export class FirebaseDashboardService {
       };
     } catch (error) {
       console.error('Error fetching user stats:', error);
+      
+      // Check if it's a Firebase configuration error
+      if (error instanceof Error && (
+        error.message.includes('Could not load the default credentials') ||
+        error.message.includes('Firebase Admin not properly initialized') ||
+        error.message.includes('Query timeout') ||
+        error.message.includes('Failed to initialize') ||
+        error.message.includes('permission denied') ||
+        error.message.includes('unauthenticated')
+      )) {
+        console.log('getUserStats: Returning default stats due to Firebase configuration issue:', error.message);
+      }
+      
       // Return default stats on error
       return {
         totalProjects: 0,
@@ -134,6 +178,12 @@ export class FirebaseDashboardService {
    */
   static async getUserActivities(userId: string, limitCount: number = 10): Promise<UserActivity[]> {
     try {
+      // Check if Firebase Admin is properly initialized
+      if (!adminDb) {
+        console.log('getUserActivities: Firebase Admin not initialized, returning empty array');
+        return [];
+      }
+
       const db = adminDb;
       
       const activitiesRef = db.collection('user_activities');
@@ -141,7 +191,15 @@ export class FirebaseDashboardService {
         .where('userId', '==', userId)
         .limit(limitCount * 2); // Get more documents to account for sorting
       
-      const activitiesSnapshot = await activitiesQuery.get();
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Activities query timeout')), 10000);
+      });
+      
+      const activitiesSnapshot = await Promise.race([
+        activitiesQuery.get(),
+        timeoutPromise
+      ]) as any;
       
       const activities = activitiesSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
         id: doc.id,
@@ -156,6 +214,19 @@ export class FirebaseDashboardService {
       return sortedActivities;
     } catch (error) {
       console.error('Error fetching user activities:', error);
+      
+      // Check if it's a Firebase configuration error
+      if (error instanceof Error && (
+        error.message.includes('Could not load the default credentials') ||
+        error.message.includes('Firebase Admin not properly initialized') ||
+        error.message.includes('Query timeout') ||
+        error.message.includes('Failed to initialize') ||
+        error.message.includes('permission denied') ||
+        error.message.includes('unauthenticated')
+      )) {
+        console.log('getUserActivities: Returning empty array due to Firebase configuration issue:', error.message);
+      }
+      
       return [];
     }
   }
@@ -165,12 +236,26 @@ export class FirebaseDashboardService {
    */
   static async getProjectsOverTime(userId: string, months: number = 6): Promise<{ date: string; count: number }[]> {
     try {
+      // Check if Firebase Admin is properly initialized
+      if (!adminDb) {
+        console.log('getProjectsOverTime: Firebase Admin not initialized, returning empty array');
+        return [];
+      }
+
       const db = adminDb;
       
       const projectsRef = db.collection('projects');
       const projectsQuery = projectsRef.where('userId', '==', userId);
       
-      const projectsSnapshot = await projectsQuery.get();
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Projects query timeout')), 10000);
+      });
+      
+      const projectsSnapshot = await Promise.race([
+        projectsQuery.get(),
+        timeoutPromise
+      ]) as any;
       const projects = projectsSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
         id: doc.id,
         ...doc.data()
@@ -203,6 +288,19 @@ export class FirebaseDashboardService {
       }));
     } catch (error) {
       console.error('Error fetching projects over time:', error);
+      
+      // Check if it's a Firebase configuration error
+      if (error instanceof Error && (
+        error.message.includes('Could not load the default credentials') ||
+        error.message.includes('Firebase Admin not properly initialized') ||
+        error.message.includes('Query timeout') ||
+        error.message.includes('Failed to initialize') ||
+        error.message.includes('permission denied') ||
+        error.message.includes('unauthenticated')
+      )) {
+        console.log('getProjectsOverTime: Returning empty array due to Firebase configuration issue:', error.message);
+      }
+      
       return [];
     }
   }
@@ -217,12 +315,32 @@ export class FirebaseDashboardService {
     averageProjectTime: string;
   }> {
     try {
+      // Check if Firebase Admin is properly initialized
+      if (!adminDb) {
+        console.log('getQuickStats: Firebase Admin not initialized, returning default stats');
+        return {
+          projectsThisWeek: 0,
+          dataScrapedToday: 0,
+          toolsActive: 0,
+          averageProjectTime: 'N/A'
+        };
+      }
+
       const db = adminDb;
       
       // Get all user projects and filter in memory to avoid composite indexes
       const projectsRef = db.collection('projects');
       const allProjectsQuery = projectsRef.where('userId', '==', userId);
-      const allProjectsSnapshot = await allProjectsQuery.get();
+      
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Quick stats query timeout')), 10000);
+      });
+      
+      const allProjectsSnapshot = await Promise.race([
+        allProjectsQuery.get(),
+        timeoutPromise
+      ]) as any;
       
       const projects = allProjectsSnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
         id: doc.id,
@@ -279,6 +397,19 @@ export class FirebaseDashboardService {
       };
     } catch (error) {
       console.error('Error fetching quick stats:', error);
+      
+      // Check if it's a Firebase configuration error
+      if (error instanceof Error && (
+        error.message.includes('Could not load the default credentials') ||
+        error.message.includes('Firebase Admin not properly initialized') ||
+        error.message.includes('Query timeout') ||
+        error.message.includes('Failed to initialize') ||
+        error.message.includes('permission denied') ||
+        error.message.includes('unauthenticated')
+      )) {
+        console.log('getQuickStats: Returning default stats due to Firebase configuration issue:', error.message);
+      }
+      
       return {
         projectsThisWeek: 0,
         dataScrapedToday: 0,
@@ -293,6 +424,13 @@ export class FirebaseDashboardService {
    */
   static async getDashboardData(userId: string): Promise<DashboardData> {
     try {
+      // Test database connection first
+      const isConnected = await testDatabaseConnection();
+      if (!isConnected) {
+        console.log('getDashboardData: Database connection failed, returning default data');
+        return this.getDefaultDashboardData();
+      }
+
       const [userStats, userActivities, projectsOverTime, quickStats] = await Promise.all([
         this.getUserStats(userId),
         this.getUserActivities(userId, 5),
@@ -320,7 +458,47 @@ export class FirebaseDashboardService {
       };
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      throw new Error('Failed to fetch dashboard data');
+      
+      // Check if it's a Firebase configuration error
+      if (error instanceof Error && (
+        error.message.includes('Could not load the default credentials') ||
+        error.message.includes('Firebase Admin not properly initialized') ||
+        error.message.includes('Query timeout')
+      )) {
+        console.log('getDashboardData: Returning default data due to Firebase configuration issue');
+        
+        // Return default dashboard data instead of throwing
+        return this.getDefaultDashboardData();
+      }
+      
+      // Provide more specific error information for other errors
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw new Error(`Failed to fetch dashboard data: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Get default dashboard data when Firebase is not available
+   */
+  private static getDefaultDashboardData(): DashboardData {
+    return {
+      stats: {
+        totalProjects: 0,
+        activeProjects: 0,
+        completedProjects: 0,
+        totalDataScraped: 0,
+        dataScrapedThisMonth: 0,
+        toolsUsed: 0,
+        lastActivity: new Date().toISOString()
+      },
+      recentActivities: [],
+      projectsOverTime: [],
+      quickStats: {
+        projectsThisWeek: 0,
+        dataScrapedToday: 0,
+        toolsActive: 0,
+        averageProjectTime: 'N/A'
+      }
+    };
   }
 } 

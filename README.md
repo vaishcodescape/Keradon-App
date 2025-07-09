@@ -44,9 +44,18 @@ FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 FIREBASE_APP_ID=your_app_id
 
 # Firebase Admin SDK (Get from Firebase Console > Project Settings > Service Accounts)
-FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nyour_private_key_here\n-----END PRIVATE KEY-----\n"
-FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project_id.iam.gserviceaccount.com
+# For local development, use service account credentials:
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project_id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nyour_private_key_here\n-----END PRIVATE KEY-----\n"
+
+# For production (Vercel, etc.), you can use application default credentials:
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
 ```
+
+**Important Notes:**
+- The `FIREBASE_PRIVATE_KEY` should be the full private key including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` parts
+- If you're deploying to Vercel, make sure to add these environment variables in your Vercel project settings
+- The app will gracefully handle missing Firebase credentials by returning default data
 
 ## 🏃‍♂️ Getting Started
 
