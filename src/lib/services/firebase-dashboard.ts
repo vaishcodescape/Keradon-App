@@ -126,7 +126,7 @@ export class FirebaseDashboardService {
       let lastActivity = new Date().toISOString();
       if (lastActivitySnapshot.docs.length > 0) {
         // Sort by timestamp in memory to get the most recent
-        const activities = lastActivitySnapshot.docs.map(doc => ({
+        const activities = lastActivitySnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
           id: doc.id,
           ...doc.data()
         })) as UserActivity[];
