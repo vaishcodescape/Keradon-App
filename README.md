@@ -1,7 +1,5 @@
 # Keradon
 
-A modern web application built with Next.js 15, featuring a robust tech stack for scalable development.
-
 ## 🚀 Features
 
 - **Next.js 15** with App Router and Server Components
