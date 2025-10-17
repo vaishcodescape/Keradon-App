@@ -209,7 +209,7 @@ This is a standard Next.js application and can be deployed to any platform that 
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
