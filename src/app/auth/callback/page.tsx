@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { FirebaseAuth } from "@/lib/auth/firebase-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AlertCircle, CheckCircle } from "lucide-react";
@@ -73,7 +73,7 @@ function AuthCallbackContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
-            <Loading size={32} />
+            <Spinner className="size-8" />
             <p className="text-sm text-muted-foreground">
               {status === 'redirecting'
                 ? 'This should only take a moment'
@@ -147,7 +147,7 @@ export default function AuthCallback() {
             <CardDescription>Processing authentication...</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
-            <Loading size={32} />
+            <Spinner className="size-8" />
           </CardContent>
         </Card>
       </div>

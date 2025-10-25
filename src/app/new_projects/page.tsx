@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { ChevronRight, Home, Plus, ArrowLeft, Save, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -182,7 +182,7 @@ export default function NewProjects() {
             >
               {isLoading ? (
                 <>
-                  <Loading size={16} />
+                  <Spinner className="size-4" />
                   Creating...
                 </>
               ) : (

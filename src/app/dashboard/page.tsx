@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { Home, Moon, Sun, TrendingUp, TrendingDown, Activity, Clock, RefreshCw } from "lucide-react";
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -109,21 +110,10 @@ export default function Dashboard() {
     }
   }, [user?.uid, mounted, authLoading, fetchDashboardData]);
 
-  // Removed auto-refresh interval useEffect
-  // useEffect(() => {
-  //   if (!user?.uid || !dashboardData) return;
-  //   const interval = setInterval(() => {
-  //     if (user?.uid) {
-  //       fetchDashboardData();
-  //     }
-  //   }, 600000); // 10 minutes instead of 5
-  //   return () => clearInterval(interval);
-  // }, [user?.uid, dashboardData, fetchDashboardData]);
-
   if (!mounted || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8" />
       </div>
     );
   }
@@ -361,7 +351,7 @@ export default function Dashboard() {
           {loading && (
             <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="flex flex-col items-center gap-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <Spinner className="size-8" />
                 <span className="text-muted-foreground">Loading dashboard data...</span>
               </div>
             </div>

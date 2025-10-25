@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { AlertCircle, CheckCircle } from "lucide-react";
 
 export default function SignUp() {
@@ -186,7 +186,7 @@ export default function SignUp() {
       {(isFormLoading || isGoogleLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="flex flex-col items-center gap-4">
-            <Loading size={32} />
+            <Spinner className="size-8" />
             <span className="text-white text-lg font-medium">
               {isGoogleLoading ? "Redirecting to Google..." : "Creating your account..."}
             </span>
@@ -228,7 +228,7 @@ export default function SignUp() {
                   emailStatus === 'exists' ? 'text-red-600' :
                   emailStatus === 'available' ? 'text-green-600' : ''
                 }`}>
-                  {emailStatus === 'checking' && <Loading size={14} />}
+                  {emailStatus === 'checking' && <Spinner className="size-3.5" />}
                   {emailStatus === 'exists' && <AlertCircle className="h-4 w-4" />}
                   {emailStatus === 'available' && <CheckCircle className="h-4 w-4" />}
                   <span>{emailMessage}</span>
@@ -267,7 +267,7 @@ export default function SignUp() {
             >
               {isFormLoading ? (
                 <div className="flex items-center gap-2">
-                  <Loading size={16} />
+                  <Spinner className="size-4" />
                   Creating account...
                 </div>
               ) : emailStatus === 'exists' ? (
@@ -293,7 +293,7 @@ export default function SignUp() {
           >
             {isGoogleLoading ? (
               <div className="flex items-center gap-2">
-                <Loading size={16} />
+                <Spinner className="size-4" />
                 Connecting...
               </div>
             ) : (

@@ -10,6 +10,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { BarChart3, LineChart, PieChart, Download, AlertCircle, TrendingUp, Database, FileText, Sparkles, MessageSquare, Lightbulb, Target, Zap } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import {
   BarChart,
   Bar,
@@ -432,7 +433,7 @@ export function VizFinInterface() {
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <Spinner className="size-4 mr-2" />
                 Generating Chart...
               </>
             ) : (
@@ -579,7 +580,7 @@ export function VizFinInterface() {
                 >
                   {isNlLoading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <Spinner className="size-4 mr-2" />
                       Analyzing...
                     </>
                   ) : (

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Globe, Search, BarChart3, Trash2, Download, FileDown } from "lucide-react"
 import { ErrorDisplay } from "./error-display"
 import { LoadingIndicator } from "./loading-indicator"
+import { Spinner } from "@/components/ui/spinner"
 import { useDataShark } from "@/hooks/useDataShark"
 
 export function DataSharkInterface() {
@@ -156,7 +157,7 @@ export function DataSharkInterface() {
         >
           {isRunning ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <Spinner className="size-4 mr-2" />
               Scraping...
             </>
           ) : (
@@ -174,7 +175,7 @@ export function DataSharkInterface() {
         >
           {isRunning ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+              <Spinner className="size-4 mr-2" />
               Analyzing...
             </>
           ) : (

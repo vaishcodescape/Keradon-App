@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loading } from "@/components/ui/loading"
+import { Spinner } from "@/components/ui/spinner"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChevronRight, Home, Plus, Search, Calendar, Database, Users, Tag, Trash2, MoreVertical } from "lucide-react"
 import Link from "next/link"
@@ -125,7 +125,7 @@ export default function ProjectsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loading size={32} />
+            <Spinner className="size-8" />
           </div>
         ) : filteredProjects.length === 0 ? (
           <div className="text-center py-12">
@@ -278,7 +278,7 @@ export default function ProjectsPage() {
                   >
                     {deleting === deleteConfirm ? (
                       <>
-                        <Loading size={16} className="mr-2" />
+                        <Spinner className="size-4 mr-2" />
                         Deleting...
                       </>
                     ) : (

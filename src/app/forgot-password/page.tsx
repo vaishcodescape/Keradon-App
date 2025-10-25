@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useState, Suspense } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { getFirebaseAuth } from "@/lib/config/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -171,7 +171,7 @@ function ForgotPasswordContent() {
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
-                  <Loading size={16} />
+                  <Spinner className="size-4" />
                   Sending...
                 </div>
               ) : (

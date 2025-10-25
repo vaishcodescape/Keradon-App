@@ -1,5 +1,6 @@
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Spinner } from "@/components/ui/spinner"
 
 interface LoadingIndicatorProps {
   isRunning: boolean;
@@ -23,7 +24,7 @@ export function LoadingIndicator({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+            <Spinner className="size-6 text-blue-500" />
             <div className="absolute inset-0 rounded-full h-6 w-6 border-2 border-blue-200 dark:border-blue-800"></div>
           </div>
           <div className="flex-1">

@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { AlertCircle } from "lucide-react";
 
 export default function SignIn() {
@@ -137,7 +137,7 @@ function SignInContent() {
       {(isFormLoading || isGoogleLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="flex flex-col items-center gap-4">
-            <Loading size={32} />
+            <Spinner className="size-8" />
             <span className="text-white text-lg font-medium">
               {isGoogleLoading ? "Redirecting to Google..." : "Signing you in..."}
             </span>
@@ -219,7 +219,7 @@ function SignInContent() {
             >
               {isFormLoading ? (
                 <div className="flex items-center gap-2">
-                  <Loading size={16} />
+                  <Spinner className="size-4" />
                   Signing in...
                 </div>
               ) : (
@@ -244,7 +244,7 @@ function SignInContent() {
           >
             {isGoogleLoading ? (
               <div className="flex items-center gap-2">
-                <Loading size={16} />
+                <Spinner className="size-4" />
                 Connecting...
               </div>
             ) : (

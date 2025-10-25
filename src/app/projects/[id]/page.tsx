@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loading } from "@/components/ui/loading";
+import { Spinner } from "@/components/ui/spinner";
 import { 
   ChevronRight, 
   Home, 
@@ -160,7 +160,7 @@ const DataSharkTool = ({ projectId, onDataUpdate }: { projectId: string; onDataU
               >
                 {isRunning ? (
                   <>
-                    <Loading size={16} className="mr-2" />
+                    <Spinner className="size-4 mr-2" />
                     Scraping...
                   </>
                 ) : (
@@ -484,7 +484,7 @@ export default function ProjectWorkspace() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loading size={32} />
+        <Spinner className="size-8" />
       </div>
     );
   }
@@ -537,7 +537,7 @@ export default function ProjectWorkspace() {
                 <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
                 {refreshing && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loading size={16} />
+                    <Spinner className="size-4" />
                     <span>Updating...</span>
                   </div>
                 )}
@@ -813,7 +813,7 @@ export default function ProjectWorkspace() {
                   >
                     {deleting ? (
                       <>
-                        <Loading size={16} className="mr-2" />
+                        <Spinner className="size-4 mr-2" />
                         Deleting...
                       </>
                     ) : (
